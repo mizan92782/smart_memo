@@ -565,14 +565,6 @@
         "documentation": {}
     },
     {
-        "label": "st",
-        "importPath": "turtle",
-        "description": "turtle",
-        "isExtraImport": true,
-        "detail": "turtle",
-        "documentation": {}
-    },
-    {
         "label": "get_wsgi_application",
         "importPath": "django.core.wsgi",
         "description": "django.core.wsgi",
