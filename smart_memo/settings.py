@@ -25,7 +25,7 @@ SECRET_KEY = 'django-insecure-p3tmd4pj0l_!$=2zxuyj@-5(xjy2o4xd=4@im5bm+ow=m9jn12
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['smart-memo-1ltc.onrender.com','localhost']
+ALLOWED_HOSTS = ['smart-memo-1ltc.onrender.com','127.0.0.1']
 
 
 # Application definition
