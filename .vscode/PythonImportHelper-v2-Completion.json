@@ -492,6 +492,46 @@
         "documentation": {}
     },
     {
+        "label": "path",
+        "importPath": "django.urls",
+        "description": "django.urls",
+        "isExtraImport": true,
+        "detail": "django.urls",
+        "documentation": {}
+    },
+    {
+        "label": "path",
+        "importPath": "django.urls",
+        "description": "django.urls",
+        "isExtraImport": true,
+        "detail": "django.urls",
+        "documentation": {}
+    },
+    {
+        "label": "include",
+        "importPath": "django.urls",
+        "description": "django.urls",
+        "isExtraImport": true,
+        "detail": "django.urls",
+        "documentation": {}
+    },
+    {
+        "label": "views",
+        "importPath": "products",
+        "description": "products",
+        "isExtraImport": true,
+        "detail": "products",
+        "documentation": {}
+    },
+    {
+        "label": "views",
+        "importPath": "products",
+        "description": "products",
+        "isExtraImport": true,
+        "detail": "products",
+        "documentation": {}
+    },
+    {
         "label": "Product",
         "importPath": "products.models",
         "description": "products.models",
@@ -530,14 +570,6 @@
         "description": "turtle",
         "isExtraImport": true,
         "detail": "turtle",
-        "documentation": {}
-    },
-    {
-        "label": "path",
-        "importPath": "django.urls",
-        "description": "django.urls",
-        "isExtraImport": true,
-        "detail": "django.urls",
         "documentation": {}
     },
     {
@@ -783,6 +815,15 @@
         "documentation": {}
     },
     {
+        "label": "homepage",
+        "kind": 2,
+        "importPath": "products.views",
+        "description": "products.views",
+        "peekOfCode": "def homepage(request):\n    return render(request, 'home.html')",
+        "detail": "products.views",
+        "documentation": {}
+    },
+    {
         "label": "run",
         "kind": 2,
         "importPath": "scripts.test",
@@ -994,7 +1035,7 @@
         "kind": 5,
         "importPath": "smart_memo.urls",
         "description": "smart_memo.urls",
-        "peekOfCode": "urlpatterns = [\n    path('admin/', admin.site.urls),\n]",
+        "peekOfCode": "urlpatterns = [\n    path('admin/', admin.site.urls),\n    path('',include('products.urls')),\n]",
         "detail": "smart_memo.urls",
         "documentation": {}
     },
