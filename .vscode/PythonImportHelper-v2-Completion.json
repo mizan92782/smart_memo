@@ -573,6 +573,14 @@
         "documentation": {}
     },
     {
+        "label": "st",
+        "importPath": "turtle",
+        "description": "turtle",
+        "isExtraImport": true,
+        "detail": "turtle",
+        "documentation": {}
+    },
+    {
         "label": "get_wsgi_application",
         "importPath": "django.core.wsgi",
         "description": "django.core.wsgi",
@@ -846,7 +854,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "BASE_DIR = Path(__file__).resolve().parent.parent\n# Quick-start development settings - unsuitable for production\n# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/\n# SECURITY WARNING: keep the secret key used in production secret!\nSECRET_KEY = 'django-insecure-p3tmd4pj0l_!$=2zxuyj@-5(xjy2o4xd=4@im5bm+ow=m9jn12'\n# SECURITY WARNING: don't run with debug turned on in production!\nDEBUG = True\nALLOWED_HOSTS = ['smart-memo-1ltc.onrender.com','127.0.0.1']\n# Application definition\nINSTALLED_APPS = [",
+        "peekOfCode": "BASE_DIR = Path(__file__).resolve().parent.parent\n# Quick-start development settings - unsuitable for production\n# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/\n# SECURITY WARNING: keep the secret key used in production secret!\nSECRET_KEY = 'django-insecure-p3tmd4pj0l_!$=2zxuyj@-5(xjy2o4xd=4@im5bm+ow=m9jn12'\n# SECURITY WARNING: don't run with debug turned on in production!\nDEBUG = True\nALLOWED_HOSTS = []\n# Application definition\nINSTALLED_APPS = [",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -855,7 +863,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "SECRET_KEY = 'django-insecure-p3tmd4pj0l_!$=2zxuyj@-5(xjy2o4xd=4@im5bm+ow=m9jn12'\n# SECURITY WARNING: don't run with debug turned on in production!\nDEBUG = True\nALLOWED_HOSTS = ['smart-memo-1ltc.onrender.com','127.0.0.1']\n# Application definition\nINSTALLED_APPS = [\n    'django.contrib.admin',\n    'django.contrib.auth',\n    'django.contrib.contenttypes',\n    'django.contrib.sessions',",
+        "peekOfCode": "SECRET_KEY = 'django-insecure-p3tmd4pj0l_!$=2zxuyj@-5(xjy2o4xd=4@im5bm+ow=m9jn12'\n# SECURITY WARNING: don't run with debug turned on in production!\nDEBUG = True\nALLOWED_HOSTS = []\n# Application definition\nINSTALLED_APPS = [\n    'django.contrib.admin',\n    'django.contrib.auth',\n    'django.contrib.contenttypes',\n    'django.contrib.sessions',",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -864,7 +872,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "DEBUG = True\nALLOWED_HOSTS = ['smart-memo-1ltc.onrender.com','127.0.0.1']\n# Application definition\nINSTALLED_APPS = [\n    'django.contrib.admin',\n    'django.contrib.auth',\n    'django.contrib.contenttypes',\n    'django.contrib.sessions',\n    'django.contrib.messages',\n    'django.contrib.staticfiles',",
+        "peekOfCode": "DEBUG = True\nALLOWED_HOSTS = []\n# Application definition\nINSTALLED_APPS = [\n    'django.contrib.admin',\n    'django.contrib.auth',\n    'django.contrib.contenttypes',\n    'django.contrib.sessions',\n    'django.contrib.messages',\n    'django.contrib.staticfiles',",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -873,7 +881,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "ALLOWED_HOSTS = ['smart-memo-1ltc.onrender.com','127.0.0.1']\n# Application definition\nINSTALLED_APPS = [\n    'django.contrib.admin',\n    'django.contrib.auth',\n    'django.contrib.contenttypes',\n    'django.contrib.sessions',\n    'django.contrib.messages',\n    'django.contrib.staticfiles',\n    'categories',",
+        "peekOfCode": "ALLOWED_HOSTS = []\n# Application definition\nINSTALLED_APPS = [\n    'django.contrib.admin',\n    'django.contrib.auth',\n    'django.contrib.contenttypes',\n    'django.contrib.sessions',\n    'django.contrib.messages',\n    'django.contrib.staticfiles',\n    'categories',",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -918,7 +926,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "WSGI_APPLICATION = 'smart_memo.wsgi.application'\n# Database\n# https://docs.djangoproject.com/en/5.2/ref/settings/#databases\nimport os\nDATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.postgresql',\n        'NAME': os.environ.get('DB_NAME', 'smart_memo_db'),\n        'USER': os.environ.get('DB_USER', 'mizan'),\n        'PASSWORD': os.environ.get('DB_PASSWORD', 'mizan999'),",
+        "peekOfCode": "WSGI_APPLICATION = 'smart_memo.wsgi.application'\n# Database\n# https://docs.djangoproject.com/en/5.2/ref/settings/#databases\nDATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.postgresql',\n        'NAME': 'smart_memo_db',\n        'USER': 'mizan',\n        'PASSWORD': 'mizan999',  # আপনার সেট করা পাসওয়ার্ড\n        'HOST': 'localhost',",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -927,7 +935,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "DATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.postgresql',\n        'NAME': os.environ.get('DB_NAME', 'smart_memo_db'),\n        'USER': os.environ.get('DB_USER', 'mizan'),\n        'PASSWORD': os.environ.get('DB_PASSWORD', 'mizan999'),\n        'HOST': os.environ.get('DB_HOST', 'smart-memo-1ltc.onrender.com'),\n        'PORT': os.environ.get('DB_PORT', '5432'),\n    }\n}",
+        "peekOfCode": "DATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.postgresql',\n        'NAME': 'smart_memo_db',\n        'USER': 'mizan',\n        'PASSWORD': 'mizan999',  # আপনার সেট করা পাসওয়ার্ড\n        'HOST': 'localhost',\n        'PORT': '5432',\n    }\n}",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
