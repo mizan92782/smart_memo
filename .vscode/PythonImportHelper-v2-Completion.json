@@ -918,7 +918,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "WSGI_APPLICATION = 'smart_memo.wsgi.application'\n# Database\n# https://docs.djangoproject.com/en/5.2/ref/settings/#databases\nDATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.postgresql',\n        'NAME': 'smart_memo_db',\n        'USER': 'mizan',\n        'PASSWORD': 'mizan999',  # আপনার সেট করা পাসওয়ার্ড\n        'HOST': 'localhost',",
+        "peekOfCode": "WSGI_APPLICATION = 'smart_memo.wsgi.application'\n# Database\n# https://docs.djangoproject.com/en/5.2/ref/settings/#databases\nimport os\nDATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.postgresql',\n        'NAME': os.environ.get('DB_NAME', 'smart_memo_db'),\n        'USER': os.environ.get('DB_USER', 'mizan'),\n        'PASSWORD': os.environ.get('DB_PASSWORD', 'mizan999'),",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -927,7 +927,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "DATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.postgresql',\n        'NAME': 'smart_memo_db',\n        'USER': 'mizan',\n        'PASSWORD': 'mizan999',  # আপনার সেট করা পাসওয়ার্ড\n        'HOST': 'localhost',\n        'PORT': '5432',\n    }\n}",
+        "peekOfCode": "DATABASES = {\n    'default': {\n        'ENGINE': 'django.db.backends.postgresql',\n        'NAME': os.environ.get('DB_NAME', 'smart_memo_db'),\n        'USER': os.environ.get('DB_USER', 'mizan'),\n        'PASSWORD': os.environ.get('DB_PASSWORD', 'mizan999'),\n        'HOST': os.environ.get('DB_HOST', 'smart-memo-1ltc.onrender.com'),\n        'PORT': os.environ.get('DB_PORT', '5432'),\n    }\n}",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
