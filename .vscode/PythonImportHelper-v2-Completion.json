@@ -32,6 +32,22 @@
         "documentation": {}
     },
     {
+        "label": "admin",
+        "importPath": "django.contrib",
+        "description": "django.contrib",
+        "isExtraImport": true,
+        "detail": "django.contrib",
+        "documentation": {}
+    },
+    {
+        "label": "AppConfig",
+        "importPath": "django.apps",
+        "description": "django.apps",
+        "isExtraImport": true,
+        "detail": "django.apps",
+        "documentation": {}
+    },
+    {
         "label": "AppConfig",
         "importPath": "django.apps",
         "description": "django.apps",
@@ -312,6 +328,22 @@
         "documentation": {}
     },
     {
+        "label": "models",
+        "importPath": "django.db",
+        "description": "django.db",
+        "isExtraImport": true,
+        "detail": "django.db",
+        "documentation": {}
+    },
+    {
+        "label": "TestCase",
+        "importPath": "django.test",
+        "description": "django.test",
+        "isExtraImport": true,
+        "detail": "django.test",
+        "documentation": {}
+    },
+    {
         "label": "TestCase",
         "importPath": "django.test",
         "description": "django.test",
@@ -333,6 +365,14 @@
         "description": "django.test",
         "isExtraImport": true,
         "detail": "django.test",
+        "documentation": {}
+    },
+    {
+        "label": "render",
+        "importPath": "django.shortcuts",
+        "description": "django.shortcuts",
+        "isExtraImport": true,
+        "detail": "django.shortcuts",
         "documentation": {}
     },
     {
@@ -400,11 +440,67 @@
         "documentation": {}
     },
     {
-        "label": "Category",
-        "importPath": "categories.models",
-        "description": "categories.models",
+        "label": "reverse",
+        "importPath": "django.urls",
+        "description": "django.urls",
         "isExtraImport": true,
-        "detail": "categories.models",
+        "detail": "django.urls",
+        "documentation": {}
+    },
+    {
+        "label": "path",
+        "importPath": "django.urls",
+        "description": "django.urls",
+        "isExtraImport": true,
+        "detail": "django.urls",
+        "documentation": {}
+    },
+    {
+        "label": "path",
+        "importPath": "django.urls",
+        "description": "django.urls",
+        "isExtraImport": true,
+        "detail": "django.urls",
+        "documentation": {}
+    },
+    {
+        "label": "path",
+        "importPath": "django.urls",
+        "description": "django.urls",
+        "isExtraImport": true,
+        "detail": "django.urls",
+        "documentation": {}
+    },
+    {
+        "label": "include",
+        "importPath": "django.urls",
+        "description": "django.urls",
+        "isExtraImport": true,
+        "detail": "django.urls",
+        "documentation": {}
+    },
+    {
+        "label": "views",
+        "importPath": "categories",
+        "description": "categories",
+        "isExtraImport": true,
+        "detail": "categories",
+        "documentation": {}
+    },
+    {
+        "label": "ListView",
+        "importPath": "django.views.generic",
+        "description": "django.views.generic",
+        "isExtraImport": true,
+        "detail": "django.views.generic",
+        "documentation": {}
+    },
+    {
+        "label": "ListView",
+        "importPath": "django.views.generic",
+        "description": "django.views.generic",
+        "isExtraImport": true,
+        "detail": "django.views.generic",
         "documentation": {}
     },
     {
@@ -500,30 +596,6 @@
         "documentation": {}
     },
     {
-        "label": "path",
-        "importPath": "django.urls",
-        "description": "django.urls",
-        "isExtraImport": true,
-        "detail": "django.urls",
-        "documentation": {}
-    },
-    {
-        "label": "path",
-        "importPath": "django.urls",
-        "description": "django.urls",
-        "isExtraImport": true,
-        "detail": "django.urls",
-        "documentation": {}
-    },
-    {
-        "label": "include",
-        "importPath": "django.urls",
-        "description": "django.urls",
-        "isExtraImport": true,
-        "detail": "django.urls",
-        "documentation": {}
-    },
-    {
         "label": "views",
         "importPath": "products",
         "description": "products",
@@ -578,6 +650,22 @@
         "description": "turtle",
         "isExtraImport": true,
         "detail": "turtle",
+        "documentation": {}
+    },
+    {
+        "label": "settings",
+        "importPath": "smart_memo",
+        "description": "smart_memo",
+        "isExtraImport": true,
+        "detail": "smart_memo",
+        "documentation": {}
+    },
+    {
+        "label": "static",
+        "importPath": "django.conf.urls.static",
+        "description": "django.conf.urls.static",
+        "isExtraImport": true,
+        "detail": "django.conf.urls.static",
         "documentation": {}
     },
     {
@@ -670,12 +758,30 @@
         "documentation": {}
     },
     {
+        "label": "categories_processor",
+        "kind": 2,
+        "importPath": "categories.categories_processor",
+        "description": "categories.categories_processor",
+        "peekOfCode": "def categories_processor(request):\n    from .models import Category\n    categories = Category.objects.all().order_by('name')\n    return {'categories': categories}  # key = variable name",
+        "detail": "categories.categories_processor",
+        "documentation": {}
+    },
+    {
         "label": "Category",
         "kind": 6,
         "importPath": "categories.models",
         "description": "categories.models",
-        "peekOfCode": "class Category(models.Model):\n  name = models.CharField(max_length=100,unique=True)\n  def save(self, *args, **kwargs):\n    self.name= self.name.title()\n    super().save(*args, **kwargs)\n  def __str__(self):\n      return self.name",
+        "peekOfCode": "class Category(models.Model):\n  name = models.CharField(max_length=100,unique=True)\n  def save(self, *args, **kwargs):\n    self.name= self.name.title()\n    super().save(*args, **kwargs)\n  def __str__(self):\n      return self.name\n  #! its take a instance of category (by self) and return the url name with wtih neccessry data: in kwgs \n  #! \"url-name\" defines templated will get this data: such that self.pk,self.name\n  def get_category_products_url(self):  # will take a instance",
         "detail": "categories.models",
+        "documentation": {}
+    },
+    {
+        "label": "urlpatterns",
+        "kind": 5,
+        "importPath": "categories.urls",
+        "description": "categories.urls",
+        "peekOfCode": "urlpatterns = [\n]",
+        "detail": "categories.urls",
         "documentation": {}
     },
     {
@@ -823,11 +929,20 @@
         "documentation": {}
     },
     {
-        "label": "homepage",
-        "kind": 2,
+        "label": "ProductList",
+        "kind": 6,
         "importPath": "products.views",
         "description": "products.views",
-        "peekOfCode": "def homepage(request):\n    cat = Category.objects.all()\n    print(cat.count())\n    return render(request, 'home.html', {'categories': cat})",
+        "peekOfCode": "class ProductList(ListView):\n    model = Product\n    context_object_name = 'products'\n    template_name='products.html'\n    ordering = ['name']\nfrom .models import Category\nclass Category_Products_ListView(ListView):\n    model = Category\n    template_name = 'category_products.html'\n    context_object_name = 'products'",
+        "detail": "products.views",
+        "documentation": {}
+    },
+    {
+        "label": "Category_Products_ListView",
+        "kind": 6,
+        "importPath": "products.views",
+        "description": "products.views",
+        "peekOfCode": "class Category_Products_ListView(ListView):\n    model = Category\n    template_name = 'category_products.html'\n    context_object_name = 'products'\n    def get_queryset(self):\n        return Product.objects.filter(category_id=self.kwargs['pk']).order_by('name')",
         "detail": "products.views",
         "documentation": {}
     },
@@ -953,7 +1068,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "LANGUAGE_CODE = 'en-us'\nTIME_ZONE = 'UTC'\nUSE_I18N = True\nUSE_TZ = True\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/5.2/howto/static-files/\nSTATIC_URL = 'static/'\nstATICFILES_DIRS = [BASE_DIR / 'static']\nSTATIC_ROOT = BASE_DIR / 'static'\n# Default primary key field type",
+        "peekOfCode": "LANGUAGE_CODE = 'en-us'\nTIME_ZONE = 'UTC'\nUSE_I18N = True\nUSE_TZ = True\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/5.2/howto/static-files/\nSTATIC_URL = 'static/'\nSTATICFILES_DIRS = [BASE_DIR / 'static']\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -962,7 +1077,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "TIME_ZONE = 'UTC'\nUSE_I18N = True\nUSE_TZ = True\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/5.2/howto/static-files/\nSTATIC_URL = 'static/'\nstATICFILES_DIRS = [BASE_DIR / 'static']\nSTATIC_ROOT = BASE_DIR / 'static'\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field",
+        "peekOfCode": "TIME_ZONE = 'UTC'\nUSE_I18N = True\nUSE_TZ = True\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/5.2/howto/static-files/\nSTATIC_URL = 'static/'\nSTATICFILES_DIRS = [BASE_DIR / 'static']\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -971,7 +1086,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "USE_I18N = True\nUSE_TZ = True\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/5.2/howto/static-files/\nSTATIC_URL = 'static/'\nstATICFILES_DIRS = [BASE_DIR / 'static']\nSTATIC_ROOT = BASE_DIR / 'static'\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'",
+        "peekOfCode": "USE_I18N = True\nUSE_TZ = True\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/5.2/howto/static-files/\nSTATIC_URL = 'static/'\nSTATICFILES_DIRS = [BASE_DIR / 'static']\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\nMEDIA_URL = '/media/'",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -980,7 +1095,7 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "USE_TZ = True\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/5.2/howto/static-files/\nSTATIC_URL = 'static/'\nstATICFILES_DIRS = [BASE_DIR / 'static']\nSTATIC_ROOT = BASE_DIR / 'static'\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\nMEDIA_URL = '/media/'",
+        "peekOfCode": "USE_TZ = True\n# Static files (CSS, JavaScript, Images)\n# https://docs.djangoproject.com/en/5.2/howto/static-files/\nSTATIC_URL = 'static/'\nSTATICFILES_DIRS = [BASE_DIR / 'static']\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\nMEDIA_URL = '/media/'\nMEDIA_ROOT = BASE_DIR / 'media'",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -989,25 +1104,16 @@
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "STATIC_URL = 'static/'\nstATICFILES_DIRS = [BASE_DIR / 'static']\nSTATIC_ROOT = BASE_DIR / 'static'\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\nMEDIA_URL = '/media/'\nMEDIA_ROOT = BASE_DIR / 'media'",
+        "peekOfCode": "STATIC_URL = 'static/'\nSTATICFILES_DIRS = [BASE_DIR / 'static']\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\nMEDIA_URL = '/media/'\nMEDIA_ROOT = BASE_DIR / 'media'",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
     {
-        "label": "stATICFILES_DIRS",
+        "label": "STATICFILES_DIRS",
         "kind": 5,
         "importPath": "smart_memo.settings",
         "description": "smart_memo.settings",
-        "peekOfCode": "stATICFILES_DIRS = [BASE_DIR / 'static']\nSTATIC_ROOT = BASE_DIR / 'static'\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\nMEDIA_URL = '/media/'\nMEDIA_ROOT = BASE_DIR / 'media'",
-        "detail": "smart_memo.settings",
-        "documentation": {}
-    },
-    {
-        "label": "STATIC_ROOT",
-        "kind": 5,
-        "importPath": "smart_memo.settings",
-        "description": "smart_memo.settings",
-        "peekOfCode": "STATIC_ROOT = BASE_DIR / 'static'\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\nMEDIA_URL = '/media/'\nMEDIA_ROOT = BASE_DIR / 'media'",
+        "peekOfCode": "STATICFILES_DIRS = [BASE_DIR / 'static']\n# Default primary key field type\n# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field\nDEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'\nMEDIA_URL = '/media/'\nMEDIA_ROOT = BASE_DIR / 'media'",
         "detail": "smart_memo.settings",
         "documentation": {}
     },
@@ -1043,7 +1149,7 @@
         "kind": 5,
         "importPath": "smart_memo.urls",
         "description": "smart_memo.urls",
-        "peekOfCode": "urlpatterns = [\n    path('admin/', admin.site.urls),\n    path('',include('products.urls')),\n]",
+        "peekOfCode": "urlpatterns = [\n    path('admin/', admin.site.urls),\n    path('products/',include('products.urls')),\n    path('categories/',include('categories.urls')),\n]\nif settings.DEBUG:\n    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)",
         "detail": "smart_memo.urls",
         "documentation": {}
     },
@@ -1054,6 +1160,15 @@
         "description": "smart_memo.wsgi",
         "peekOfCode": "application = get_wsgi_application()",
         "detail": "smart_memo.wsgi",
+        "documentation": {}
+    },
+    {
+        "label": "UsersConfig",
+        "kind": 6,
+        "importPath": "users.apps",
+        "description": "users.apps",
+        "peekOfCode": "class UsersConfig(AppConfig):\n    default_auto_field = 'django.db.models.BigAutoField'\n    name = 'users'",
+        "detail": "users.apps",
         "documentation": {}
     },
     {

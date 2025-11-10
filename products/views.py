@@ -1,9 +1,24 @@
 from django.shortcuts import render
+from django.views.generic import ListView
 
-from categories.models import Category
+from .models import Product
 
-# Create your views here.
-def homepage(request):
-    cat = Category.objects.all()
-    print(cat.count())
-    return render(request, 'home.html', {'categories': cat})
+
+
+class ProductList(ListView):
+    model = Product
+    context_object_name = 'products'
+    template_name='products.html'
+    ordering = ['name']
+
+
+from .models import Category
+
+
+class Category_Products_ListView(ListView):
+    model = Category
+    template_name = 'category_products.html'
+    context_object_name = 'products'
+
+    def get_queryset(self):
+        return Product.objects.filter(category_id=self.kwargs['pk']).order_by('name')
