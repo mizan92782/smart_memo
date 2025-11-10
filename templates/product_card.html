@@ -1,0 +1,50 @@
+{# templates/partials/_product_card.html #}
+{# প্রত্যাশা: context এ একটি `product` অবজেক্ট থাকবে #}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/product_card.css' %}?v=1.0">
+
+
+<div class="product-card">
+ 
+  <a href="" class="product-card_image" title="{{ product.name }}">
+   
+    <div class="product-card__media">
+      {% if product.image %}
+        <img src="{{ product.image.url }}" alt="{{ product.name }}" class="product-card__img" />
+      {% else %}
+        <div class="product-card__placeholder">No image</div>
+      {% endif %}
+
+    </div>
+  </a>
+
+
+
+    <div class="product-card__body">
+
+      <!-- card title-->
+      <h3 class="product-card__title">{{ product.name }} ({{ product.second_name}})</h3>
+      {% if product.description %}
+        <p class="product-card__desc">{{ product.description|truncatechars:80 }}</p>
+      {% endif %}
+
+
+
+      <!-- card price-->
+      <div class="product-card__meta">
+        <div class="product-card__price">
+            <span class="price">{{ product.price }} {{ product.currency}}</span>
+        </div>
+
+      </div>
+       
+      <!--Card Action-->
+      <div class="product-card__actions">
+        <a href="" class="btn btn-sm">Add to cart</a>
+        <a href="" class="btn btn-outline btn-sm">View</a>
+      </div>
+    </div>
+  
+
+
+</div>

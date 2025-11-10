@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+
+
+
+{% block categorylist %}
+  {% include 'expand_list.html' %}
+{% endblock categorylist %}
+
+
+{% block content %}
+  
+<div class="product-container">
+    {% for product in products %}
+      {% include 'product_card.html' with product=product %}
+  {% endfor %}
+  </div> 
+{% endblock content %}

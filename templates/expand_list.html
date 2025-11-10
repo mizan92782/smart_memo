@@ -1,0 +1,11 @@
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/category_list.css' %}?v=2.2">
+ 
+
+<div class="category-container">
+  {% for category in categories %}
+    <div class="category-item" onclick="window.location.href='{{ category.get_category_products_url }}'">
+      {{ category.name }}
+    </div>
+  {% endfor %}
+</div>
