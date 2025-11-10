@@ -1,0 +1,74 @@
+{% load static %}
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title> 
+      {% block title %}
+          Document
+      {% endblock title %}
+  </title>
+   
+
+  
+  <!--global css-->
+  
+
+  <!-- extra css-->
+  {% block extra_css %}
+    
+  {% endblock extra_css %}
+    
+
+</head>
+
+
+
+
+
+<body>
+
+    <!-- header-->
+    {% block header %} 
+      {% include 'navigation.html' %}
+    {% endblock header %}  
+
+    
+
+    
+
+
+
+
+
+   
+  <main>
+     
+    <!--category list-->
+    {% block categorylist %}
+      
+    {% endblock categorylist %}
+  
+    
+    <!-- main content-->
+    {% block content %}
+    {% endblock content %}
+
+  </main>
+
+
+
+
+  <!-- footer-->
+  <footer>
+    {% block footer %}
+    {% endblock footer %}
+  </footer>
+  
+
+   <link rel="stylesheet" href="{% static 'css/base.css' %}?v=1.0">
+   {% block extra_js %}
+   {% endblock extra_js %}
+
+</body>
+</html>
