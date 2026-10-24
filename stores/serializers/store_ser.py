@@ -15,11 +15,13 @@ class StoreSerializer(BaseModelSerializer):
             'is_verified', 'verified_at', 'verification_notes',
             'opening_time', 'closing_time', 'delivery_enabled',
             'pickup_enabled', 'delivery_fee', 'min_order_amount',
+            'average_rating', 'total_reviews',
             'vendor_email', 'created_at', 'updated_at'
         ]
         read_only_fields = [
             'id', 'slug', 'created_at', 'updated_at', 'vendor_email',
-            'is_verified', 'verified_at', 'verification_notes'
+            'is_verified', 'verified_at', 'verification_notes',
+            'average_rating', 'total_reviews'
         ]
 
 
@@ -39,6 +41,7 @@ class PublicStoreSerializer(serializers.ModelSerializer):
             'address', 'latitude', 'longitude', 'is_active',
             'opening_time', 'closing_time', 'delivery_enabled',
             'pickup_enabled', 'delivery_fee', 'min_order_amount',
+            'average_rating', 'total_reviews',
             'distance_km', 'is_favorite'
         ]
 

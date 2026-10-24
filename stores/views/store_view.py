@@ -31,6 +31,10 @@ class StoreViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         if self.action in ['public', 'public_detail', 'nearby', 'calculate_delivery_fee']:
             return [AllowAny()]
+        if self.action == 'reviews':
+            if self.request.method == 'GET':
+                return [AllowAny()]
+            return [IsAuthenticated(), IsCustomer()]
         if self.action in ['favorite', 'unfavorite', 'favorites']:
             return [IsAuthenticated(), IsCustomer()]
         if self.action in ['verify', 'suspend', 'activate', 'governance_overview']:
@@ -311,6 +315,56 @@ class StoreViewSet(viewsets.ModelViewSet):
                 "is_dynamic": dist is not None
             }
         )
+
+    @action(detail=True, methods=['get', 'post'], url_path='reviews')
+    def reviews(self, request, pk=None):
+        """
+        GET /stores/{id}/reviews/ -> Lists verified customer reviews for this store (Public).
+        POST /stores/{id}/reviews/ -> Authenticated customer submits a review for a completed order.
+        """
+        store = StoreRepository.get_by_id(pk)
+        if not store:
+            return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'GET':
+            from stores.services.review_service import ReviewService
+            from stores.serializers.review_ser import StoreReviewSerializer
+            reviews_qs = ReviewService.get_store_reviews(store_id=pk)
+            page = self.paginate_queryset(reviews_qs)
+            if page is not None:
+                serializer = StoreReviewSerializer(page, many=True)
+                return self.get_paginated_response(serializer.data)
+
+            serializer = StoreReviewSerializer(reviews_qs, many=True)
+            return custome_success_response(
+                message="Store reviews retrieved successfully.",
+                data=serializer.data
+            )
+
+        # POST: Create review
+        from stores.serializers.review_ser import StoreReviewCreateSerializer, StoreReviewSerializer
+        from stores.services.review_service import ReviewService
+
+        serializer = StoreReviewCreateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            review = ReviewService.create_review(
+                customer=request.user,
+                store_id=store.id,
+                order_id=serializer.validated_data['order_id'],
+                rating=serializer.validated_data['rating'],
+                comment=serializer.validated_data.get('comment', '')
+            )
+            return custome_success_response(
+                message="Review submitted successfully.",
+                data=StoreReviewSerializer(review).data,
+                status_code=status.HTTP_201_CREATED
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
 
 
 

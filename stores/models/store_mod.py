@@ -32,6 +32,8 @@ class Store(BaseModel):
     pickup_enabled = models.BooleanField(default=True)
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
     min_order_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00)
+    average_rating = models.DecimalField(max_digits=3, decimal_places=2, default=0.00, db_index=True)
+    total_reviews = models.IntegerField(default=0)
 
     class Meta:
         ordering = ['name']

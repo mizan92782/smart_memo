@@ -1075,3 +1075,94 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 - **Description**: Cancels a draft reconciliation session without modifying inventory balances or ledger.
 - **Permissions**: `IsAuthenticated`, `IsVendor`.
 
+---
+
+## 17. Verified Customer Store Reviews & Ratings APIs
+
+### `GET /stores/{id}/reviews/`
+- **Description**: Public endpoint to list all customer reviews for a given store, including ratings, comments, verified buyer order IDs, and vendor replies.
+- **Permissions**: AllowAny (Public).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Store reviews retrieved successfully.",
+  "data": [
+    {
+      "id": 1,
+      "store": 3,
+      "store_name": "Organic Greens",
+      "customer_email": "customer@example.com",
+      "order": 14,
+      "rating": 5,
+      "comment": "Outstanding produce quality and super fast delivery!",
+      "vendor_reply": "Thank you so much! We look forward to serving you again.",
+      "vendor_replied_at": "2026-10-24T09:40:00Z",
+      "created_at": "2026-10-24T09:35:00Z",
+      "updated_at": "2026-10-24T09:40:00Z"
+    }
+  ]
+}
+```
+
+### `POST /stores/{id}/reviews/`
+- **Description**: Submit a verified customer review for a store. Enforces that the customer must have at least one `COMPLETED` order from this store (`verified purchase`), and enforces single-review anti-spam invariant (`unique_together = ('store', 'customer')`). Automatically synchronizes store's `average_rating` and `total_reviews` via SQL aggregations, and invalidates cached store profiles.
+- **Permissions**: `IsAuthenticated` (Customer role).
+- **Request Body**:
+```json
+{
+  "rating": 5,
+  "comment": "Outstanding produce quality and super fast delivery!",
+  "order_id": 14
+}
+```
+*(Note: `order_id` is optional; if omitted, the system links to the customer's most recent completed order at this store).*
+- **Response** (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Review submitted successfully.",
+  "data": {
+    "id": 1,
+    "store": 3,
+    "rating": 5,
+    "comment": "Outstanding produce quality and super fast delivery!",
+    "created_at": "2026-10-24T09:35:00Z"
+  }
+}
+```
+
+### `POST /stores/reviews/{id}/reply/`
+- **Description**: Store owner submits an official response to a customer review.
+- **Permissions**: `IsAuthenticated` (Store Owner vendor only).
+- **Request Body**:
+```json
+{
+  "reply": "Thank you so much! We look forward to serving you again."
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Reply posted successfully.",
+  "data": {
+    "id": 1,
+    "vendor_reply": "Thank you so much! We look forward to serving you again.",
+    "vendor_replied_at": "2026-10-24T09:40:00Z"
+  }
+}
+```
+
+### `DELETE /stores/reviews/{id}/`
+- **Description**: Delete a review. Customers can delete their own reviews; platform Staff/Admin can delete any review for moderation. Automatically recalculates store's `average_rating` and `total_reviews` and invalidates store cache.
+- **Permissions**: `IsAuthenticated` (Review Author or Staff/Admin).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Review deleted successfully.",
+  "data": null
+}
+```
+

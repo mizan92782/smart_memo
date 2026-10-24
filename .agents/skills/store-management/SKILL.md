@@ -30,4 +30,9 @@ description: Vendor store profile, location, opening hours, delivery settings an
 - **Vendor Read-Only Protection**: Make `is_verified`, `verified_at`, and `verification_notes` read-only in `StoreSerializer` so vendors cannot self-verify.
 - **Discovery & Checkout Guard**: Both `get_public_active_stores()` and `submit_order_from_card` enforce `is_active=True and is_verified=True`. Suspended or unverified stores are hidden from public searches and reject new orders.
 - **Platform-Wide Governance Aggregations**: Staff and Superusers can query `GET /stores/governance-overview/` which computes platform metrics (stores breakdown, user distribution, GMV, orders status) via SQL aggregations (`Count`, `Sum`, `Coalesce`).
+- **Verified Customer Reviews**: Customers can submit reviews (`rating` 1-5, `comment`) for stores only if they have at least one verified `COMPLETED` order (`Order.objects.filter(customer=user, store=store, status=OrderStatus.COMPLETED).exists()`).
+- **Anti-Spam & Invariant**: Single review per customer per store enforced by unique constraints (`unique_together = ('store', 'customer')`).
+- **Instant O(1) Public Ratings**: Stores maintain `average_rating` (`DecimalField(max_digits=3, decimal_places=2)`) and `total_reviews` (`IntegerField`), recalculated via SQL aggregations (`Avg('rating')`, `Count('id')`) upon review creation, update, or deletion. Public discovery and listings read this directly in O(1) time without expensive subqueries.
+- **Vendor Response**: Store owners can submit an official reply (`vendor_reply`, `vendor_replied_at`) to reviews on their store (`POST /stores/reviews/{id}/reply/`).
+- **Review Deletion & Invalidation**: Customers can delete their own reviews and staff can moderate reviews (`DELETE /stores/reviews/{id}/`), automatically triggering store rating recalculation and cache invalidation (`CacheService.invalidate_store_profile`).
 
