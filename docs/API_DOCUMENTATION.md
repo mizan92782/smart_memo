@@ -1166,3 +1166,126 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 }
 ```
 
+---
+
+## 18. Store Promotional Coupons & Order Discounts APIs
+
+### `GET /stores/{id}/coupons/`
+- **Description**: Vendor retrieves all promotional coupons created for their store.
+- **Permissions**: `IsAuthenticated`, `IsVendor` (Store Owner only).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Coupons retrieved successfully.",
+  "data": [
+    {
+      "id": 1,
+      "store": 5,
+      "store_name": "Organic Greens",
+      "code": "SAVE20",
+      "discount_type": "percentage",
+      "discount_value": "20.00",
+      "max_discount_amount": "50.00",
+      "min_order_amount": "100.00",
+      "max_uses": 200,
+      "used_count": 14,
+      "max_uses_per_customer": 1,
+      "start_date": "2026-10-01T00:00:00Z",
+      "end_date": "2026-11-01T00:00:00Z",
+      "is_active": true
+    }
+  ]
+}
+```
+
+### `POST /stores/{id}/coupons/`
+- **Description**: Vendor creates a new promotional discount coupon scoped to their store.
+- **Permissions**: `IsAuthenticated`, `IsVendor` (Store Owner only).
+- **Request Body**:
+```json
+{
+  "code": "SAVE20",
+  "discount_type": "percentage",
+  "discount_value": "20.00",
+  "max_discount_amount": "50.00",
+  "min_order_amount": "100.00",
+  "max_uses": 200,
+  "max_uses_per_customer": 1,
+  "start_date": "2026-10-01T00:00:00Z",
+  "end_date": "2026-11-01T00:00:00Z",
+  "is_active": true
+}
+```
+- **Response** (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Coupon 'SAVE20' created successfully.",
+  "data": {
+    "id": 1,
+    "code": "SAVE20",
+    "discount_type": "percentage",
+    "discount_value": "20.00",
+    "is_active": true
+  }
+}
+```
+
+### `GET /stores/coupons/{id}/`
+- **Description**: Vendor views details of a specific coupon.
+- **Permissions**: `IsAuthenticated`, `IsVendor` (Store Owner only).
+
+### `PATCH /stores/coupons/{id}/`
+- **Description**: Vendor updates coupon parameters (dates, active toggle, usage limits, discount values).
+- **Permissions**: `IsAuthenticated`, `IsVendor` (Store Owner only).
+
+### `DELETE /stores/coupons/{id}/`
+- **Description**: Vendor deletes a coupon.
+- **Permissions**: `IsAuthenticated`, `IsVendor` (Store Owner only).
+
+### `GET /stores/coupons/{id}/usages/`
+- **Description**: Vendor reviews the redemption ledger for a coupon, seeing which customers and orders used it and the exact discount amount applied.
+- **Permissions**: `IsAuthenticated`, `IsVendor` (Store Owner only).
+
+### `POST /cards/{id}/apply-coupon/`
+- **Description**: Customer applies a store coupon code to their draft shopping memo card. Validates that the coupon belongs to the card's store, is active, within valid dates, satisfies `min_order_amount`, has not exceeded `max_uses`, and this customer hasn't exceeded `max_uses_per_customer`. Returns live discount amount preview and estimated total.
+- **Permissions**: `IsAuthenticated` (Customer / Card Owner).
+- **Request Body**:
+```json
+{
+  "code": "SAVE20"
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Coupon 'SAVE20' applied successfully.",
+  "data": {
+    "coupon_code": "SAVE20",
+    "discount_type": "percentage",
+    "discount_value": "20.00",
+    "discount_amount": "20.00",
+    "subtotal": "100.00",
+    "estimated_total": "80.00"
+  }
+}
+```
+
+### `POST /cards/{id}/remove-coupon/`
+- **Description**: Customer removes the applied coupon from their draft memo card.
+- **Permissions**: `IsAuthenticated` (Customer / Card Owner).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Coupon removed from shopping memo.",
+  "data": {
+    "subtotal": "100.00",
+    "discount_amount": "0.00",
+    "estimated_total": "100.00"
+  }
+}
+```
+

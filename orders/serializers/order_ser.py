@@ -17,6 +17,7 @@ class SalesMemoSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'memo_number', 'store_name_snapshot',
             'customer_email_snapshot', 'items_snapshot', 'subtotal',
+            'coupon_code', 'discount_amount',
             'delivery_fee', 'total_amount', 'amount_paid', 'created_at'
         ]
 
@@ -33,6 +34,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'customer', 'customer_email',
             'store', 'store_name', 'status', 'fulfillment_type',
             'delivery_address', 'delivery_fee', 'subtotal',
+            'coupon_code', 'discount_amount',
             'total_amount', 'payment_method', 'payment_status',
             'idempotency_key', 'notes', 'accepted_at',
             'preparing_at', 'dispatched_at',
@@ -43,6 +45,7 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'order_number', 'customer', 'customer_email',
             'store_name', 'status', 'delivery_fee', 'subtotal',
+            'coupon_code', 'discount_amount',
             'total_amount', 'payment_status', 'accepted_at',
             'preparing_at', 'dispatched_at',
             'completed_at', 'cancelled_at', 'paid_at',

@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.conf import settings
 from shared.base.base_model import BaseModel
@@ -23,6 +24,13 @@ class Card(BaseModel):
         blank=True,
         related_name='cards'
     )
+    coupon = models.ForeignKey(
+        'stores.Coupon',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='cards'
+    )
     title = models.CharField(max_length=200, default="My Memo Card")
     is_completed = models.BooleanField(default=False)
 
@@ -36,7 +44,25 @@ class Card(BaseModel):
 
     @property
     def total_price(self):
-        return sum(item.subtotal for item in self.items.all())
+        items = list(self.items.all())
+        if not items:
+            return Decimal('0.00')
+        return sum(item.subtotal for item in items)
+
+    @property
+    def discount_amount(self):
+        if not self.coupon or not self.store:
+            return Decimal('0.00')
+        if self.coupon.store_id != self.store_id:
+            return Decimal('0.00')
+        is_valid, _ = self.coupon.is_valid_for(self.user, self.total_price)
+        if not is_valid:
+            return Decimal('0.00')
+        return self.coupon.calculate_discount(self.total_price)
+
+    @property
+    def estimated_total(self):
+        return max(Decimal('0.00'), self.total_price - self.discount_amount)
 
 
 class CardItem(BaseModel):
@@ -60,7 +86,7 @@ class CardItem(BaseModel):
 
     @property
     def subtotal(self):
-        return self.quantity * self.unit_price
+        return (Decimal(str(self.quantity)) * Decimal(str(self.unit_price))).quantize(Decimal('0.01'))
 
     def save(self, *args, **kwargs):
         if not self.unit_price:

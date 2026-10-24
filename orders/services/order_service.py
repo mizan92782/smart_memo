@@ -91,7 +91,22 @@ class OrderService:
         else:
             delivery_fee = Decimal('0.00')
 
-        total_amount = subtotal + delivery_fee
+        # Coupon validation and authoritative discount calculation
+        applied_coupon = None
+        coupon_code = ""
+        discount_amount = Decimal('0.00')
+
+        if card.coupon:
+            if card.coupon.store_id != card.store_id:
+                raise ValueError(f"Coupon '{card.coupon.code}' is not valid for this store.")
+            is_valid, reason = card.coupon.is_valid_for(customer, subtotal)
+            if not is_valid:
+                raise ValueError(f"Coupon '{card.coupon.code}' is no longer valid: {reason}")
+            discount_amount = card.coupon.calculate_discount(subtotal)
+            coupon_code = card.coupon.code
+            applied_coupon = card.coupon
+
+        total_amount = max(Decimal('0.00'), subtotal - discount_amount) + delivery_fee
 
         order = OrderRepository.create_order(
             customer=customer,
@@ -101,6 +116,8 @@ class OrderService:
             delivery_address=delivery_address,
             delivery_fee=delivery_fee,
             subtotal=subtotal,
+            coupon_code=coupon_code,
+            discount_amount=discount_amount,
             total_amount=total_amount,
             payment_method=PaymentMethod.COD,
             payment_status=PaymentStatus.PENDING,
@@ -130,8 +147,18 @@ class OrderService:
                 notes=f"Order reservation for {order.order_number}"
             )
 
+        if applied_coupon:
+            from stores.services.coupon_service import CouponService
+            CouponService.record_coupon_usage(
+                coupon=applied_coupon,
+                customer=customer,
+                order=order,
+                discount_applied=discount_amount
+            )
+            card.coupon = None
+
         card.is_completed = True
-        card.save(update_fields=['is_completed', 'updated_at'])
+        card.save(update_fields=['is_completed', 'coupon', 'updated_at'])
 
         # Dispatch async order and low-stock notifications
         from notifications.services.notification_service import NotificationService
@@ -258,6 +285,8 @@ class OrderService:
             customer_email_snapshot=order.customer.email,
             items_snapshot=items_snapshot,
             subtotal=order.subtotal,
+            coupon_code=order.coupon_code,
+            discount_amount=order.discount_amount,
             delivery_fee=order.delivery_fee,
             total_amount=order.total_amount,
             amount_paid=order.total_amount if payment_collected else Decimal('0.00')

@@ -366,5 +366,53 @@ class StoreViewSet(viewsets.ModelViewSet):
         except PermissionError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
 
+    @action(detail=True, methods=['get', 'post'], permission_classes=[IsAuthenticated, IsVendor])
+    def coupons(self, request, pk=None):
+        """
+        GET /stores/{id}/coupons/ -> Lists vendor's promotional coupons for this store.
+        POST /stores/{id}/coupons/ -> Vendor creates a promotional coupon for this store.
+        """
+        store = StoreRepository.get_by_id(pk)
+        if not store:
+            return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        from stores.services.coupon_service import CouponService
+        from stores.serializers.coupon_ser import CouponSerializer
+
+        if request.method == 'GET':
+            try:
+                coupons_qs = CouponService.get_store_coupons(store_id=store.id, actor=request.user)
+                page = self.paginate_queryset(coupons_qs)
+                if page is not None:
+                    serializer = CouponSerializer(page, many=True)
+                    return self.get_paginated_response(serializer.data)
+
+                serializer = CouponSerializer(coupons_qs, many=True)
+                return custome_success_response(
+                    message="Coupons retrieved successfully.",
+                    data=serializer.data
+                )
+            except PermissionError as exc:
+                return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+            except ValueError as exc:
+                return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+        # POST
+        try:
+            coupon = CouponService.create_coupon(
+                store_id=store.id,
+                actor=request.user,
+                data=request.data
+            )
+            return custome_success_response(
+                message=f"Coupon '{coupon.code}' created successfully.",
+                data=CouponSerializer(coupon).data,
+                status_code=status.HTTP_201_CREATED
+            )
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
 
 

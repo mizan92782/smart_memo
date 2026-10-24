@@ -127,6 +127,49 @@ class CardViewSet(viewsets.ModelViewSet):
         except (ValueError, PermissionError) as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'], url_path='apply-coupon')
+    def apply_coupon(self, request, pk=None):
+        """Apply promotional discount coupon to the draft shopping memo."""
+        card = self.get_object()
+        code = request.data.get('code')
+        if not code:
+            return custome_error_response("Coupon code is required.", status_code=status.HTTP_400_BAD_REQUEST)
+        try:
+            from stores.services.coupon_service import CouponService
+            coupon, discount, estimated_total = CouponService.validate_and_apply_to_card(
+                card=card,
+                code=code,
+                user=request.user
+            )
+            return custome_success_response(
+                message=f"Coupon '{coupon.code}' applied successfully.",
+                data={
+                    'coupon_code': coupon.code,
+                    'discount_type': coupon.discount_type,
+                    'discount_value': f"{coupon.discount_value:.2f}",
+                    'discount_amount': f"{discount:.2f}",
+                    'subtotal': f"{card.total_price:.2f}",
+                    'estimated_total': f"{estimated_total:.2f}"
+                }
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='remove-coupon')
+    def remove_coupon(self, request, pk=None):
+        """Remove coupon from the draft shopping memo."""
+        card = self.get_object()
+        from stores.services.coupon_service import CouponService
+        CouponService.remove_from_card(card=card, user=request.user)
+        return custome_success_response(
+            message="Coupon removed from shopping memo.",
+            data={
+                'subtotal': f"{card.total_price:.2f}",
+                'discount_amount': '0.00',
+                'estimated_total': f"{card.total_price:.2f}"
+            }
+        )
+
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def checkout(self, request, pk=None):
         card = CardRepository.get_by_id(pk)

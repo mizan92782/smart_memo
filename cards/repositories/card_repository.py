@@ -75,15 +75,17 @@ class CardRepository:
 
     @staticmethod
     def remove_item_from_card(card: Card, item: CardItem) -> None:
-        """Remove an item from a card and reset store if memo becomes empty."""
+        """Remove an item from a card and reset store and coupon if memo becomes empty."""
         item.delete()
         if card.items.count() == 0:
             card.store = None
-            card.save(update_fields=['store', 'updated_at'])
+            card.coupon = None
+            card.save(update_fields=['store', 'coupon', 'updated_at'])
 
     @staticmethod
     def clear_card(card: Card) -> None:
-        """Remove all items from draft memo and reset store binding."""
+        """Remove all items from draft memo and reset store and coupon binding."""
         card.items.all().delete()
         card.store = None
-        card.save(update_fields=['store', 'updated_at'])
+        card.coupon = None
+        card.save(update_fields=['store', 'coupon', 'updated_at'])

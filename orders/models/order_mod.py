@@ -60,6 +60,8 @@ class Order(BaseModel):
     delivery_address = models.TextField(blank=True, default="")
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     subtotal = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    coupon_code = models.CharField(max_length=32, blank=True, default="")
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     total_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
     payment_method = models.CharField(
         max_length=20,
@@ -142,6 +144,8 @@ class SalesMemo(BaseModel):
     customer_email_snapshot = models.CharField(max_length=200)
     items_snapshot = models.JSONField(default=list)
     subtotal = models.DecimalField(max_digits=10, decimal_places=2)
+    discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    coupon_code = models.CharField(max_length=32, blank=True, default="")
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2)

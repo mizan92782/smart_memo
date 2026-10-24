@@ -20,7 +20,14 @@ class CardSerializer(serializers.ModelSerializer):
     items = CardItemSerializer(many=True, read_only=True)
     total_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
     store_name = serializers.CharField(source='store.name', read_only=True)
+    coupon_code = serializers.CharField(source='coupon.code', read_only=True, default=None)
+    discount_amount = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    estimated_total = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
 
     class Meta:
         model = Card
-        fields = ['id', 'user', 'store', 'store_name', 'title', 'is_completed', 'created_at', 'items', 'total_price']
+        fields = [
+            'id', 'user', 'store', 'store_name', 'coupon', 'coupon_code',
+            'title', 'is_completed', 'created_at', 'items',
+            'total_price', 'discount_amount', 'estimated_total'
+        ]
