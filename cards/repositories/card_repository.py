@@ -29,6 +29,16 @@ class CardRepository:
         return qs
 
     @staticmethod
+    def get_by_vendor(vendor_id: int, store_id: Optional[int] = None, is_completed: Optional[bool] = None) -> QuerySet[Card]:
+        """Fetch cards for a given vendor with optional store and completion filters."""
+        qs = Card.objects.select_related('store', 'coupon', 'user').prefetch_related('items__product').filter(vendor_id=vendor_id)
+        if store_id is not None:
+            qs = qs.filter(store_id=store_id)
+        if is_completed is not None:
+            qs = qs.filter(is_completed=is_completed)
+        return qs
+
+    @staticmethod
     def get_active_card_for_user(user_id: int, store_id: Optional[int] = None) -> Optional[Card]:
         """Fetch current active (uncompleted) card for user, optionally scoped to a store."""
         qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(user_id=user_id, is_completed=False)
@@ -47,13 +57,15 @@ class CardRepository:
                 empty_card = qs.filter(store__isnull=True).exclude(items__isnull=False).first()
                 if empty_card:
                     empty_card.store = store
+                    empty_card.vendor = store.vendor
                     empty_card.shopping_mode = shopping_mode
                     empty_card.title = title or f"{store.name} Memo"
-                    empty_card.save(update_fields=['store', 'shopping_mode', 'title', 'updated_at'])
+                    empty_card.save(update_fields=['store', 'vendor', 'shopping_mode', 'title', 'updated_at'])
                     return empty_card
                 card = Card.objects.create(
                     user=user,
                     store=store,
+                    vendor=store.vendor,
                     shopping_mode=shopping_mode,
                     title=title or f"{store.name} Memo"
                 )
@@ -69,10 +81,11 @@ class CardRepository:
             return card
 
     @staticmethod
-    def create_card(user=None, user_id: Optional[int] = None, store=None, title: str = "My Memo Card") -> Card:
+    def create_card(user=None, user_id: Optional[int] = None, store=None, vendor=None, title: str = "My Memo Card") -> Card:
         """Create a new card."""
         uid = user.id if user else user_id
-        return Card.objects.create(user_id=uid, store=store, title=title)
+        v_user = vendor or (store.vendor if store else None)
+        return Card.objects.create(user_id=uid, store=store, vendor=v_user, title=title)
 
     @staticmethod
     def add_item_to_card(card: Card, product, quantity: Decimal, unit_price: Optional[Decimal] = None) -> CardItem:

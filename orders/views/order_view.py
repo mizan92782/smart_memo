@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -19,18 +20,22 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         user = self.request.user
         if not user or not user.is_authenticated:
             return Order.objects.none()
+        memo_prefetch = Prefetch(
+            'sales_memo',
+            queryset=SalesMemo.objects.select_related('customer', 'vendor')
+        )
         if hasattr(user, 'role') and user.role == 'vendor':
             return (
                 Order.objects
-                .filter(store__vendor=user, is_deleted=False)
-                .select_related('customer', 'store')
-                .prefetch_related('items', 'sales_memo')
+                .filter(vendor=user, is_deleted=False)
+                .select_related('customer', 'vendor', 'store')
+                .prefetch_related('items', memo_prefetch)
             )
         return (
             Order.objects
             .filter(customer=user, is_deleted=False)
-            .select_related('customer', 'store')
-            .prefetch_related('items', 'sales_memo')
+            .select_related('customer', 'vendor', 'store')
+            .prefetch_related('items', memo_prefetch)
         )
 
     @action(detail=False, methods=['post'])

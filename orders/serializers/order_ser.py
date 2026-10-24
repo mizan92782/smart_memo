@@ -12,11 +12,20 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class SalesMemoSerializer(serializers.ModelSerializer):
+    customer_email = serializers.EmailField(source='customer.email', read_only=True, default=None)
+    vendor_email = serializers.EmailField(source='vendor.email', read_only=True, default=None)
+
     class Meta:
         model = SalesMemo
         fields = [
-            'id', 'memo_number', 'store_name_snapshot',
-            'customer_email_snapshot', 'items_snapshot', 'subtotal',
+            'id', 'memo_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
+            'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
+            'coupon_code', 'discount_amount',
+            'delivery_fee', 'total_amount', 'amount_paid', 'created_at'
+        ]
+        read_only_fields = [
+            'id', 'memo_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
+            'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
             'coupon_code', 'discount_amount',
             'delivery_fee', 'total_amount', 'amount_paid', 'created_at'
         ]
@@ -27,11 +36,12 @@ class OrderSerializer(serializers.ModelSerializer):
     sales_memo = SalesMemoSerializer(read_only=True)
     store_name = serializers.CharField(source='store.name', read_only=True)
     customer_email = serializers.EmailField(source='customer.email', read_only=True)
+    vendor_email = serializers.EmailField(source='vendor.email', read_only=True, default=None)
 
     class Meta:
         model = Order
         fields = [
-            'id', 'order_number', 'customer', 'customer_email',
+            'id', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store', 'store_name', 'status', 'fulfillment_type',
             'delivery_address', 'delivery_fee', 'subtotal',
             'coupon_code', 'discount_amount',
@@ -46,7 +56,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'items', 'sales_memo', 'created_at'
         ]
         read_only_fields = [
-            'id', 'order_number', 'customer', 'customer_email',
+            'id', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store_name', 'status', 'delivery_fee', 'subtotal',
             'coupon_code', 'discount_amount',
             'total_amount', 'payment_status', 'accepted_at',

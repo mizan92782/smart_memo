@@ -110,6 +110,7 @@ class OrderService:
 
         order = OrderRepository.create_order(
             customer=customer,
+            vendor=card.store.vendor if card.store else None,
             store=card.store,
             status=OrderStatus.SUBMITTED,
             fulfillment_type=fulfillment_type,
@@ -347,6 +348,8 @@ class OrderService:
 
         OrderRepository.create_sales_memo(
             order=order,
+            customer=order.customer,
+            vendor=order.vendor or (order.store.vendor if order.store else None),
             store_name_snapshot=order.store.name,
             customer_email_snapshot=order.customer.email,
             items_snapshot=items_snapshot,

@@ -43,6 +43,13 @@ class Order(BaseModel):
         on_delete=models.CASCADE,
         related_name='orders'
     )
+    vendor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='vendor_orders'
+    )
     store = models.ForeignKey(
         Store,
         on_delete=models.CASCADE,
@@ -105,9 +112,26 @@ class Order(BaseModel):
         verbose_name = 'Order'
         verbose_name_plural = 'Orders'
 
+    @property
+    def user(self):
+        return self.customer
+
+    @user.setter
+    def user(self, value):
+        self.customer = value
+
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = f"ORD-{uuid.uuid4().hex[:10].upper()}"
+        if self.store_id and not self.vendor_id:
+            if hasattr(self, 'store') and self.store and self.store.vendor:
+                self.vendor = self.store.vendor
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            if 'vendor' not in update_fields and self.vendor_id:
+                update_fields.add('vendor')
+            kwargs['update_fields'] = update_fields
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -148,6 +172,20 @@ class SalesMemo(BaseModel):
         on_delete=models.CASCADE,
         related_name='sales_memo'
     )
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='sales_memos'
+    )
+    vendor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='vendor_sales_memos'
+    )
     memo_number = models.CharField(max_length=64, unique=True, blank=True)
     store_name_snapshot = models.CharField(max_length=200)
     customer_email_snapshot = models.CharField(max_length=200)
@@ -163,9 +201,30 @@ class SalesMemo(BaseModel):
         verbose_name = 'Sales Memo'
         verbose_name_plural = 'Sales Memos'
 
+    @property
+    def user(self):
+        return self.customer
+
+    @user.setter
+    def user(self, value):
+        self.customer = value
+
     def save(self, *args, **kwargs):
         if not self.memo_number:
             self.memo_number = f"MEMO-{uuid.uuid4().hex[:10].upper()}"
+        if self.order_id:
+            if not self.customer_id and hasattr(self, 'order') and self.order:
+                self.customer = self.order.customer
+            if not self.vendor_id and hasattr(self, 'order') and self.order:
+                self.vendor = getattr(self.order, 'vendor', None) or (self.order.store.vendor if self.order.store else None)
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            if 'customer' not in update_fields and self.customer_id:
+                update_fields.add('customer')
+            if 'vendor' not in update_fields and self.vendor_id:
+                update_fields.add('vendor')
+            kwargs['update_fields'] = update_fields
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -41,3 +41,7 @@ A draft memo is an editable shopping list. A submitted order is a customer's req
   - Customers physically walking inside a store set `shopping_mode='walk_in'` and add items to their memo as they walk around the store.
   - At in-store checkout (`fulfillment_type='walk_in'`), delivery fees are suppressed (`0.00`) and no delivery address is required.
   - Store owners/staff collect the picked items, accept on-the-spot payment, and hand over products via `POST /orders/{id}/handover/`, immediately completing the order and issuing the finalized `SalesMemo`.
+- **Database-Level User & Vendor Fields**:
+  - `Card`, `Order`, and `SalesMemo` each have explicit, indexed database foreign keys for both customer/user (`user` / `customer`) and store vendor (`vendor`).
+  - Database `.save()` and repository methods automatically synchronize `vendor` from `store.vendor` / `order.store.vendor`.
+  - Seamless dual-perspective querying: customers query their own cards (`CardRepository.get_by_user`), vendors can query cards directed to their stores (`CardRepository.get_by_vendor`, `GET /cards/?as_vendor=true`), and both perspectives are serialized with `vendor_email` and `customer_email`.

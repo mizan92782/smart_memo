@@ -25,6 +25,9 @@ class CardViewSet(viewsets.ModelViewSet):
         is_comp_val = None
         if is_completed is not None:
             is_comp_val = is_completed.lower() in ['true', '1']
+        as_vendor = self.request.query_params.get('as_vendor', '').lower() in ['true', '1']
+        if as_vendor and hasattr(user, 'role') and user.role == 'vendor':
+            return CardRepository.get_by_vendor(user.id, store_id=store_id, is_completed=is_comp_val)
         return CardRepository.get_by_user(user.id, store_id=store_id, is_completed=is_comp_val)
 
     def perform_create(self, serializer):

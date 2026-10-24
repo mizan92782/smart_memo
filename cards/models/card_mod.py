@@ -22,6 +22,13 @@ class Card(BaseModel):
         blank=True,
         related_name='cards'
     )
+    vendor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='vendor_cards'
+    )
     store = models.ForeignKey(
         Store,
         on_delete=models.CASCADE,
@@ -49,6 +56,30 @@ class Card(BaseModel):
         ordering = ['-created_at']
         verbose_name = 'Card'
         verbose_name_plural = 'Cards'
+
+    @property
+    def customer(self):
+        return self.user
+
+    @customer.setter
+    def customer(self, value):
+        self.user = value
+
+    def save(self, *args, **kwargs):
+        if self.store_id:
+            if hasattr(self, 'store') and self.store and self.store.vendor:
+                self.vendor = self.store.vendor
+        else:
+            self.vendor = None
+
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            update_fields = set(update_fields)
+            if 'vendor' not in update_fields:
+                update_fields.add('vendor')
+            kwargs['update_fields'] = update_fields
+
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.title} (#{self.id})"
