@@ -5,10 +5,11 @@ This document is the living single source of truth for feature development statu
 ---
 
 ## 📌 Last Working Feature
-- **Feature Name**: Full Multi-Tenant SaaS Platform (Store Promotional Coupons & Order Discounts, Verified Customer Store Reviews & Ratings, Physical Inventory Audit & Batch Stock Reconciliation, Customer Saved Delivery Addresses & Dynamic Distance-Based Delivery Fees, Production Rate Limiting & Abuse Controls, Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
-- **Status**: 🟢 **Completed & Verified (179 Tests Passing)**
+- **Feature Name**: Full Multi-Tenant SaaS Platform (Delivery Driver Assignment & Real-Time Dispatch Tracking, Store Promotional Coupons & Order Discounts, Verified Customer Store Reviews & Ratings, Physical Inventory Audit & Batch Stock Reconciliation, Customer Saved Delivery Addresses & Dynamic Distance-Based Delivery Fees, Production Rate Limiting & Abuse Controls, Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
+- **Status**: 🟢 **Completed & Verified (188 Tests Passing)**
 - **Last Verified Working**: 2026-10-24
 - **Current State**:
+  - `orders` (Delivery Driver Assignment & Real-Time Dispatch Tracking): Real-time delivery personnel assignment (`delivery_person_name`, `delivery_person_phone`, `delivery_vehicle_type`, `delivery_tracking_notes`, `estimated_delivery_time`, `auto_dispatch`) via `POST /orders/{id}/assign-delivery/`. Reassignment support while in transit, pickup order and terminal order rejection, customer driver visibility on order retrieval, automated dispatching to `OUT_FOR_DELIVERY` with `dispatched_at` stamped, instant customer notification with driver contact details, and strict server-side tenant isolation / IDOR prevention. Passing 9/9 tests.
   - `stores` (Store Promotional Coupons & Order Discounts): `Coupon` and `CouponUsage` models, supporting percentage discounts with maximum ceiling caps (`max_discount_amount`) and fixed currency amounts, `min_order_amount`, `max_uses`, `max_uses_per_customer`, and active time windows (`start_date`, `end_date`). Draft memo coupon application (`POST /cards/{id}/apply-coupon/`) with live discount and estimated total preview, coupon detachment (`POST /cards/{id}/remove-coupon/`), authoritative checkout revalidation and discount deduction in `OrderService.submit_order_from_card`, immutable snapshots on `Order` and `SalesMemo`, atomic usage ledger tracking (`CouponUsage`), and vendor coupon management API (`/stores/{id}/coupons/`, `/stores/coupons/{id}/`). Passing 10/10 tests.
   - `stores` (Verified Customer Store Reviews & Ratings): `StoreReview` model with completed order verification (`unique_together = ('store', 'customer')`), automated calculation and denormalization of `average_rating` and `total_reviews` on `Store` via SQL aggregation, customer review submission (`POST /stores/{id}/reviews/`), public review listing (`GET /stores/{id}/reviews/`), vendor official reply (`POST /stores/reviews/{id}/reply/`), review deletion by customer or staff (`DELETE /stores/reviews/{id}/`), cache invalidation on rating updates, and tenant-level authorization. Passing 10/10 tests.
   - `inventory` (Physical Inventory Audit & Batch Stock Reconciliation): `StockReconciliation` and `StockReconciliationItem` models, draft count session snapshotting system on-hand balances, discrepancy computation (`physical_stock - system_stock`) and monetary variance valuation, atomic batch application (`POST /inventory/reconciliations/{id}/apply/`) updating `StockBalance` with row locking (`select_for_update`), enforcing active order reservation invariants, posting `StockMovementType.RECONCILIATION` entries to the immutable `StockLedgerEntry` ledger, recording `AuditAction.INVENTORY_RECONCILED` audit logs, invalidating cache, and enforcing strict vendor tenant isolation. Passing 8/8 tests.
@@ -60,8 +61,9 @@ This document is the living single source of truth for feature development statu
 | **21** | **Physical Inventory Audit & Batch Reconciliation** | Physical inventory stock takes (`StockReconciliation`), variance calculation, atomic ledger reconciliation, reservation guard | 🟢 Completed | 🟢 8 Passing | 🟢 8 Passing | 🟢 Enforced |
 | **22** | **Verified Customer Store Reviews & Ratings** | Completed order verified reviews (`StoreReview`), anti-spam unique guard, denormalized O(1) store average rating, vendor replies, moderation | 🟢 Completed | 🟢 10 Passing | 🟢 10 Passing | 🟢 Enforced |
 | **23** | **Store Promotional Coupons & Order Discounts** | Store-scoped discount coupons (`Coupon`), percentage/fixed discounts, min order amounts, usage limits, draft memo application, authoritative checkout calculation, usage ledger (`CouponUsage`) | 🟢 Completed | 🟢 10 Passing | 🟢 10 Passing | 🟢 Enforced |
+| **24** | **Delivery Driver Assignment & Real-Time Tracking** | Vendor driver assignment (`name`, `phone`, `vehicle_type`, `tracking_notes`, `estimated_delivery_time`), auto-dispatch, in-transit reassignment, pickup/terminal guards, customer notifications | 🟢 Completed | 🟢 9 Passing | 🟢 9 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 179 / 179 (100% Passing)*
+*Total Active Automated Tests Passing: 188 / 188 (100% Passing)*
 
 ---
 
@@ -98,6 +100,7 @@ This document is the living single source of truth for feature development statu
 | **Orders** | `orders/tests/test_performance.py` | N+1 query prevention on orders listing and catalog search (`assertNumQueries`) | 🟢 Passing | 2 / 2 OK |
 | **Orders** | `orders/tests/test_delivery_payment.py` | Delivery/pickup store capability enforcement, min order validation, decoupled COD payment collection | 🟢 Passing | 4 / 4 OK |
 | **Orders** | `orders/tests/test_fulfillment_pipeline.py` | Full 5-stage fulfillment pipeline (`prepare`, `dispatch`), timestamps, customer cancel guards | 🟢 Passing | 5 / 5 OK |
+| **Orders** | `orders/tests/test_delivery_assignment.py` | Driver assignment, auto-dispatch, in-transit reassignment, pickup/terminal guards, notifications | 🟢 Passing | 9 / 9 OK |
 | **Purchases** | `purchases/tests/test_purchases.py` | Supplier creation, draft PO zero-stock impact, atomic receiving, duplicate rejection | 🟢 Passing | 4 / 4 OK |
 | **Purchases** | `purchases/tests/test_security.py` | Cross-vendor PO IDOR block, customer PO access block, unauthenticated block | 🟢 Passing | 4 / 4 OK |
 | **Reports** | `reports/tests/test_reports.py` | Database aggregations for sales, inventory low-stock alerts, procurement spending | 🟢 Passing | 3 / 3 OK |
@@ -163,8 +166,12 @@ This document is the living single source of truth for feature development statu
   - Implemented `Coupon` and `CouponUsage` models with percentage discounts (and maximum ceiling caps), flat fixed currency amounts, min order amounts, time-bounded dates, and per-customer usage limits.
   - Implemented customer draft memo coupon attachment (`POST /cards/{id}/apply-coupon/`) and detachment (`POST /cards/{id}/remove-coupon/`) with live discount and estimated total preview.
   - Integrated authoritative server-side checkout discount calculation, immutable order and sales memo snapshots, atomic usage tracking, and vendor coupon management endpoints (`/stores/{id}/coupons/`, `/stores/coupons/{id}/`).
-  - Added `test_coupons.py` (10/10 passing).
-- Executed full test suite across entire SaaS platform: **179 / 179 tests passing (100% pass rate)**.
+- Implemented **Phase 24: Delivery Driver Assignment & Real-Time Dispatch Tracking**:
+  - Added delivery driver assignment fields to `Order` (`delivery_person_name`, `delivery_person_phone`, `delivery_vehicle_type`, `delivery_tracking_notes`, `delivery_assigned_at`, `estimated_delivery_time`).
+  - Implemented `POST /orders/{id}/assign-delivery/` endpoint with auto-dispatch capability (`auto_dispatch=True` advancing status to `OUT_FOR_DELIVERY`), pickup and terminal order guards, and real-time customer notifications.
+  - Exposed delivery driver contact info in `OrderSerializer` for customer tracking while strictly isolating assignment controls to store vendors.
+  - Added `test_delivery_assignment.py` (9/9 passing).
+- Executed full test suite across entire SaaS platform: **188 / 188 tests passing (100% pass rate)**.
 
 ---
 

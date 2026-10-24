@@ -90,6 +90,14 @@ class Order(BaseModel):
     )
     customer_phone_snapshot = models.CharField(max_length=30, blank=True, default="")
 
+    # Delivery Driver Assignment & Dispatch
+    delivery_person_name = models.CharField(max_length=100, blank=True, default="")
+    delivery_person_phone = models.CharField(max_length=30, blank=True, default="")
+    delivery_vehicle_type = models.CharField(max_length=50, blank=True, default="")
+    delivery_tracking_notes = models.TextField(blank=True, default="")
+    delivery_assigned_at = models.DateTimeField(null=True, blank=True)
+    estimated_delivery_time = models.DateTimeField(null=True, blank=True)
+
 
     class Meta:
         ordering = ['-created_at']

@@ -40,6 +40,9 @@ class OrderSerializer(serializers.ModelSerializer):
             'preparing_at', 'dispatched_at',
             'completed_at', 'cancelled_at', 'paid_at',
             'payment_collected_by', 'customer_phone_snapshot',
+            'delivery_person_name', 'delivery_person_phone',
+            'delivery_vehicle_type', 'delivery_tracking_notes',
+            'delivery_assigned_at', 'estimated_delivery_time',
             'items', 'sales_memo', 'created_at'
         ]
         read_only_fields = [
@@ -50,6 +53,9 @@ class OrderSerializer(serializers.ModelSerializer):
             'preparing_at', 'dispatched_at',
             'completed_at', 'cancelled_at', 'paid_at',
             'payment_collected_by', 'customer_phone_snapshot',
+            'delivery_person_name', 'delivery_person_phone',
+            'delivery_vehicle_type', 'delivery_tracking_notes',
+            'delivery_assigned_at', 'estimated_delivery_time',
             'items', 'sales_memo', 'created_at'
         ]
 
@@ -61,3 +67,24 @@ class OrderSubmitSerializer(serializers.Serializer):
     delivery_address = serializers.CharField(required=False, default="")
     idempotency_key = serializers.CharField(required=False, allow_blank=True, default=None)
     notes = serializers.CharField(required=False, default="")
+
+
+class DeliveryAssignmentSerializer(serializers.Serializer):
+    driver_name = serializers.CharField(max_length=100, required=True)
+    driver_phone = serializers.CharField(max_length=30, required=True)
+    vehicle_type = serializers.CharField(max_length=50, required=False, allow_blank=True, default="")
+    tracking_notes = serializers.CharField(required=False, allow_blank=True, default="")
+    estimated_delivery_time = serializers.DateTimeField(required=False, allow_null=True, default=None)
+    auto_dispatch = serializers.BooleanField(required=False, default=False)
+
+    def validate_driver_name(self, value):
+        name = value.strip()
+        if not name:
+            raise serializers.ValidationError("Driver name cannot be empty.")
+        return name
+
+    def validate_driver_phone(self, value):
+        phone = value.strip()
+        if not phone:
+            raise serializers.ValidationError("Driver phone cannot be empty.")
+        return phone

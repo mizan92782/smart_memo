@@ -230,6 +230,69 @@ class OrderService:
         return order
 
     @staticmethod
+    def assign_delivery_driver(
+        order: Order,
+        actor,
+        driver_name: str,
+        driver_phone: str,
+        vehicle_type: str = "",
+        tracking_notes: str = "",
+        estimated_delivery_time=None,
+        auto_dispatch: bool = False
+    ) -> Order:
+        """
+        Assign a designated delivery driver to a home delivery order.
+        Enforces tenant isolation, delivery fulfillment type, and active status invariants.
+        """
+        from shared.enums.enums import UserRoleEnum
+        is_staff = getattr(actor, 'role', '') in [UserRoleEnum.STAFF, UserRoleEnum.SUPERUSER] or actor.is_staff or actor.is_superuser
+        if order.store.vendor != actor and not is_staff:
+            raise PermissionError("You do not have permission to assign a delivery driver to this order.")
+
+        if order.fulfillment_type != FulfillmentType.DELIVERY:
+            raise ValueError("Delivery drivers can only be assigned to home delivery orders, not in-store pickup orders.")
+
+        if order.status in [OrderStatus.COMPLETED, OrderStatus.CANCELLED, OrderStatus.REJECTED]:
+            raise ValueError(f"Cannot assign delivery driver to an order with status '{order.status}'.")
+
+        driver_name = str(driver_name).strip()
+        driver_phone = str(driver_phone).strip()
+        if not driver_name:
+            raise ValueError("Driver name is required.")
+        if not driver_phone:
+            raise ValueError("Driver phone number is required.")
+
+        order.delivery_person_name = driver_name
+        order.delivery_person_phone = driver_phone
+        order.delivery_vehicle_type = vehicle_type.strip() if vehicle_type else ""
+        order.delivery_tracking_notes = tracking_notes.strip() if tracking_notes else ""
+        order.delivery_assigned_at = timezone.now()
+        if estimated_delivery_time:
+            order.estimated_delivery_time = estimated_delivery_time
+
+        fields_to_update = [
+            'delivery_person_name',
+            'delivery_person_phone',
+            'delivery_vehicle_type',
+            'delivery_tracking_notes',
+            'delivery_assigned_at',
+            'estimated_delivery_time',
+            'updated_at'
+        ]
+
+        if auto_dispatch and order.status in [OrderStatus.ACCEPTED, OrderStatus.PREPARING, OrderStatus.SUBMITTED]:
+            order.status = OrderStatus.OUT_FOR_DELIVERY
+            order.dispatched_at = timezone.now()
+            fields_to_update.extend(['status', 'dispatched_at'])
+
+        order.save(update_fields=fields_to_update)
+
+        from notifications.services.notification_service import NotificationService
+        NotificationService.notify_delivery_assigned(order)
+
+        return order
+
+    @staticmethod
     @transaction.atomic
     def fulfill_order(order: Order, actor, payment_collected: bool = True) -> Order:
         """

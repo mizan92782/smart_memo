@@ -35,3 +35,16 @@ class OrderRepository:
     @staticmethod
     def create_sales_memo(**kwargs) -> SalesMemo:
         return SalesMemo.objects.create(**kwargs)
+
+    @staticmethod
+    def update_order(order: Order, **kwargs) -> Order:
+        update_fields = []
+        for key, value in kwargs.items():
+            if hasattr(order, key):
+                setattr(order, key, value)
+                update_fields.append(key)
+        if update_fields:
+            if 'updated_at' not in update_fields:
+                update_fields.append('updated_at')
+            order.save(update_fields=update_fields)
+        return order

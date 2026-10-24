@@ -526,6 +526,40 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 - **Description**: Cancels order and atomically returns reserved inventory back to available stock. Customers can only cancel while order is in `submitted` or `accepted` status before preparation begins. Vendors can reject/cancel at any pre-completion stage.
 - **Permissions**: `IsAuthenticated` (Order Customer or Store Vendor).
 
+### `POST /orders/{id}/assign-delivery/`
+- **Description**: Vendor assigns delivery driver/personnel details (`driver_name`, `driver_phone`, `vehicle_type`, `tracking_notes`, `estimated_delivery_time`, `auto_dispatch`) to an active home delivery order. When `auto_dispatch=True`, advances order status to `out_for_delivery` and notifies customer with driver contact info.
+- **Permissions**: `IsAuthenticated` (Store Vendor only).
+- **Request Body**:
+```json
+{
+  "driver_name": "Tariqul Islam",
+  "driver_phone": "+8801812345678",
+  "vehicle_type": "Motorbike",
+  "tracking_notes": "Carrying insulated bag #12",
+  "estimated_delivery_time": "2026-10-24T17:30:00Z",
+  "auto_dispatch": true
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Delivery driver assigned successfully.",
+  "data": {
+    "id": 1,
+    "status": "out_for_delivery",
+    "delivery_person_name": "Tariqul Islam",
+    "delivery_person_phone": "+8801812345678",
+    "delivery_vehicle_type": "Motorbike",
+    "delivery_tracking_notes": "Carrying insulated bag #12",
+    "delivery_assigned_at": "2026-10-24T16:10:00Z",
+    "estimated_delivery_time": "2026-10-24T17:30:00Z",
+    "dispatched_at": "2026-10-24T16:10:00Z"
+  },
+  "errors": null
+}
+```
+
 ### `GET /orders/{id}/sales_memo/`
 - **Description**: Download or view finalized immutable sales memo receipt.
 - **Permissions**: `IsAuthenticated` (Order Customer or Store Vendor).

@@ -113,6 +113,34 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'], url_path='assign-delivery')
+    def assign_delivery(self, request, pk=None):
+        """Vendor assigns a delivery driver to a home delivery order."""
+        order = self.get_object()
+        from orders.serializers.order_ser import DeliveryAssignmentSerializer
+        serializer = DeliveryAssignmentSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            order = OrderService.assign_delivery_driver(
+                order=order,
+                actor=request.user,
+                driver_name=serializer.validated_data['driver_name'],
+                driver_phone=serializer.validated_data['driver_phone'],
+                vehicle_type=serializer.validated_data.get('vehicle_type', ''),
+                tracking_notes=serializer.validated_data.get('tracking_notes', ''),
+                estimated_delivery_time=serializer.validated_data.get('estimated_delivery_time'),
+                auto_dispatch=serializer.validated_data.get('auto_dispatch', False)
+            )
+            return custome_success_response(
+                message=f"Delivery driver '{order.delivery_person_name}' assigned to order #{order.order_number}.",
+                data=OrderSerializer(order).data
+            )
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=True, methods=['post'])
     def fulfill(self, request, pk=None):
         """Vendor marks order as fulfilled/completed and collects payment."""

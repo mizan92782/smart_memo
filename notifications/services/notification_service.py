@@ -96,6 +96,31 @@ class NotificationService:
         )
 
     @staticmethod
+    def notify_delivery_assigned(order) -> Notification:
+        """Notifies customer about delivery driver assignment and vehicle details."""
+        vehicle_str = f" via {order.delivery_vehicle_type}" if order.delivery_vehicle_type else ""
+        driver_str = f"{order.delivery_person_name} ({order.delivery_person_phone})"
+        return NotificationService.create_notification(
+            recipient=order.customer,
+            store=order.store,
+            title=f"Delivery Driver Assigned: Order #{order.order_number}",
+            message=(
+                f"Your order #{order.order_number} from '{order.store.name}' has been assigned to driver "
+                f"{driver_str}{vehicle_str}."
+            ),
+            notification_type=NotificationType.ORDER_OUT_FOR_DELIVERY,
+            metadata={
+                'order_id': order.id,
+                'order_number': order.order_number,
+                'driver_name': order.delivery_person_name,
+                'driver_phone': order.delivery_person_phone,
+                'vehicle_type': order.delivery_vehicle_type,
+                'status': order.status
+            },
+            idempotency_key=f"order_driver_assigned_{order.id}_{order.delivery_person_name}"
+        )
+
+    @staticmethod
     def notify_low_stock_if_needed(store, product, balance) -> Notification | None:
         """Dispatches an alert to vendor if balance falls to or below threshold."""
         if not balance.is_low_stock:
