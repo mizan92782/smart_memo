@@ -495,4 +495,41 @@ class OrderService:
 
         return order
 
+    @staticmethod
+    def list_sales_memos(actor, filters: Optional[dict] = None, as_vendor: bool = False):
+        """
+        List sales memos with strict tenant isolation.
+        - Customers view their own memos.
+        - Vendors view memos for their stores (when as_vendor=True or actor has vendor role).
+        - Staff / superusers can inspect all memos.
+        """
+        filters = filters or {}
+        from shared.enums.enums import UserRoleEnum
+        is_staff = getattr(actor, 'role', '') in [UserRoleEnum.STAFF, UserRoleEnum.SUPERUSER] or actor.is_staff or actor.is_superuser
+
+        customer_id = None
+        vendor_id = None
+
+        if not is_staff:
+            if as_vendor or getattr(actor, 'role', '') == UserRoleEnum.VENDOR:
+                vendor_id = actor.id
+            else:
+                customer_id = actor.id
+
+        return OrderRepository.get_sales_memos(
+            customer_id=customer_id,
+            vendor_id=vendor_id,
+            store_id=filters.get('store_id'),
+            from_date=filters.get('from_date'),
+            to_date=filters.get('to_date'),
+            search=filters.get('search')
+        )
+
+    @staticmethod
+    def get_customer_spending_summary(customer):
+        """
+        Calculates multi-store spending analytics for a customer.
+        """
+        return OrderRepository.get_customer_spending_summary(customer.id)
+
 

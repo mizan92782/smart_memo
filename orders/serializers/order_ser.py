@@ -14,21 +14,28 @@ class OrderItemSerializer(serializers.ModelSerializer):
 class SalesMemoSerializer(serializers.ModelSerializer):
     customer_email = serializers.EmailField(source='customer.email', read_only=True, default=None)
     vendor_email = serializers.EmailField(source='vendor.email', read_only=True, default=None)
+    order_number = serializers.CharField(source='order.order_number', read_only=True, default=None)
+    thermal_receipt = serializers.SerializerMethodField()
 
     class Meta:
         model = SalesMemo
         fields = [
-            'id', 'memo_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
+            'id', 'memo_number', 'order', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
             'coupon_code', 'discount_amount',
-            'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot', 'created_at'
+            'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot',
+            'thermal_receipt', 'created_at'
         ]
         read_only_fields = [
-            'id', 'memo_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
+            'id', 'memo_number', 'order', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
             'coupon_code', 'discount_amount',
-            'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot', 'created_at'
+            'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot',
+            'thermal_receipt', 'created_at'
         ]
+
+    def get_thermal_receipt(self, obj) -> str:
+        return obj.format_thermal_receipt()
 
 
 class OrderSerializer(serializers.ModelSerializer):

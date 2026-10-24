@@ -52,3 +52,7 @@ A draft memo is an editable shopping list. A submitted order is a customer's req
   - `POST /cards/{id}/save-for-later/`: defers an active cart to saved status.
   - `POST /cards/{id}/activate/`: activates a saved memo as the active cart for that store; if an active cart with items already exists, automatically swaps it to saved status so no items are lost.
   - `POST /cards/{id}/duplicate/`: clones a memo and all item snapshots into an independent saved or active memo.
+- **Digital Sales Memo Wallet, Thermal Receipts & Customer Spending Analytics**:
+  - `GET /orders/sales-memos/`: centralized digital receipt wallet for customers across all visited stores; vendors can filter by store or query as vendor (`?as_vendor=true`).
+  - `SalesMemo.format_thermal_receipt()`: formats receipts into 40-column monospace slips suitable for 58mm/80mm POS thermal printers; exposed via `thermal_receipt` field and `GET /orders/{id}/thermal-receipt/`.
+  - `GET /orders/customer-spending/`: multi-store customer analytics calculating total spent, total saved, and store-by-store breakdown using pure SQL database aggregations (`Coalesce(Sum(...))`).

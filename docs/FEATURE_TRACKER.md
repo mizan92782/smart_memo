@@ -111,6 +111,7 @@ This document is the living single source of truth for feature development statu
 | **Orders** | `orders/tests/test_fulfillment_pipeline.py` | Full 5-stage fulfillment pipeline (`prepare`, `dispatch`), timestamps, customer cancel guards | 🟢 Passing | 5 / 5 OK |
 | **Orders** | `orders/tests/test_delivery_assignment.py` | Driver assignment, auto-dispatch, in-transit reassignment, pickup/terminal guards, notifications | 🟢 Passing | 9 / 9 OK |
 | **Orders** | `orders/tests/test_counter_pos.py` | In-Store Counter POS, 6-digit walk-in code lookup, handover flow, cross-vendor isolation, sales memo snapshot | 🟢 Passing | 7 / 7 OK |
+| **Orders** | `orders/tests/test_sales_memos_and_spending.py` | Digital sales memos wallet, thermal receipt 40-col formatting, store breakdown, customer spending analytics | 🟢 Passing | 7 / 7 OK |
 | **Purchases** | `purchases/tests/test_purchases.py` | Supplier creation, draft PO zero-stock impact, atomic receiving, duplicate rejection | 🟢 Passing | 4 / 4 OK |
 | **Purchases** | `purchases/tests/test_security.py` | Cross-vendor PO IDOR block, customer PO access block, unauthenticated block | 🟢 Passing | 4 / 4 OK |
 | **Reports** | `reports/tests/test_reports.py` | Database aggregations for sales, inventory low-stock alerts, procurement spending | 🟢 Passing | 3 / 3 OK |
@@ -200,7 +201,13 @@ This document is the living single source of truth for feature development statu
   - Added `OrderRepository.get_by_walk_in_code()` and `OrderService.counter_lookup()` with vendor tenant isolation.
   - Implemented `POST /orders/counter-lookup/` action on `OrderViewSet` enabling store owners / counter staff to instantly look up orders via 6-digit code.
   - Added `test_counter_pos.py` (7/7 passing).
-- Executed full test suite across entire SaaS platform: **217 / 217 tests passing (100% pass rate)**.
+- Implemented **Phase 29: Digital Sales Memo History, Thermal Receipt Formatting & Multi-Store Customer Spending Analytics**:
+  - Implemented `SalesMemo.format_thermal_receipt()` 40-column monospace slip formatter with store header, memo #, order #, walk-in code snapshot, itemized breakdown, and totals.
+  - Added `GET /orders/{id}/sales_memo/?receipt_format=thermal` and `GET /orders/{id}/thermal-receipt/` returning raw `text/plain` printable receipt slips.
+  - Implemented `GET /orders/sales-memos/` digital receipt wallet with store ID, date range, search filters, pagination, and dual customer/vendor tenancy.
+  - Implemented `GET /orders/customer-spending/` multi-store spending analytics computing `total_spent`, `total_saved`, `total_memos`, and `store_breakdown` using pure SQL database aggregations.
+  - Added `test_sales_memos_and_spending.py` (7/7 passing).
+- Executed full test suite across entire SaaS platform: **224 / 224 tests passing (100% pass rate)**.
 
 ---
 

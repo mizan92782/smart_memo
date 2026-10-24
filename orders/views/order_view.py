@@ -22,7 +22,7 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             return Order.objects.none()
         memo_prefetch = Prefetch(
             'sales_memo',
-            queryset=SalesMemo.objects.select_related('customer', 'vendor')
+            queryset=SalesMemo.objects.select_related('customer', 'vendor', 'order')
         )
         if hasattr(user, 'role') and user.role == 'vendor':
             return (
@@ -216,10 +216,23 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         order = self.get_object()
         if not hasattr(order, 'sales_memo'):
             return custome_error_response("Sales memo not generated yet.", status_code=status.HTTP_404_NOT_FOUND)
+        fmt = (request.query_params.get('receipt_format') or request.query_params.get('format_type') or '').lower()
+        if fmt in ['text', 'thermal']:
+            from django.http import HttpResponse
+            return HttpResponse(order.sales_memo.format_thermal_receipt(), content_type='text/plain; charset=utf-8')
         return custome_success_response(
             message="Sales memo retrieved.",
             data=SalesMemoSerializer(order.sales_memo).data
         )
+
+    @action(detail=True, methods=['get'], url_path='thermal-receipt')
+    def thermal_receipt(self, request, pk=None):
+        """Retrieve plain text thermal receipt slip for printing."""
+        order = self.get_object()
+        if not hasattr(order, 'sales_memo'):
+            return custome_error_response("Sales memo not generated yet.", status_code=status.HTTP_404_NOT_FOUND)
+        from django.http import HttpResponse
+        return HttpResponse(order.sales_memo.format_thermal_receipt(), content_type='text/plain; charset=utf-8')
 
     @action(detail=True, methods=['post'], url_path='collect-payment')
     def collect_payment(self, request, pk=None):
@@ -254,4 +267,37 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
         except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='sales-memos')
+    def list_sales_memos(self, request):
+        """
+        Digital Sales Memo History / Receipt Wallet.
+        Enables customers to view all completed digital sales memos across all stores.
+        Enables vendors to query sales memos for their store(s) with ?as_vendor=true.
+        """
+        as_vendor = request.query_params.get('as_vendor', '').lower() in ['true', '1']
+        filters = {
+            'store_id': request.query_params.get('store_id'),
+            'from_date': request.query_params.get('from_date'),
+            'to_date': request.query_params.get('to_date'),
+            'search': request.query_params.get('search')
+        }
+        qs = OrderService.list_sales_memos(actor=request.user, filters=filters, as_vendor=as_vendor)
+        page = self.paginate_queryset(qs)
+        if page is not None:
+            serializer = SalesMemoSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = SalesMemoSerializer(qs, many=True)
+        return custome_success_response("Sales memos retrieved.", data=serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='customer-spending')
+    def customer_spending(self, request):
+        """
+        Customer spending analytics and multi-store visit breakdown.
+        """
+        stats = OrderService.get_customer_spending_summary(request.user)
+        return custome_success_response(
+            message="Customer multi-store spending analytics retrieved.",
+            data=stats
+        )
 

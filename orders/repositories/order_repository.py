@@ -75,3 +75,82 @@ class OrderRepository:
                 update_fields.append('updated_at')
             order.save(update_fields=update_fields)
         return order
+
+    @staticmethod
+    def get_sales_memos(
+        customer_id: Optional[int] = None,
+        vendor_id: Optional[int] = None,
+        store_id: Optional[int] = None,
+        from_date=None,
+        to_date=None,
+        search: Optional[str] = None
+    ) -> QuerySet[SalesMemo]:
+        """Fetch sales memos with optional customer, vendor, store, date and search filters."""
+        qs = SalesMemo.objects.filter(is_deleted=False).select_related('order', 'customer', 'vendor', 'order__store')
+        if customer_id is not None:
+            qs = qs.filter(customer_id=customer_id)
+        if vendor_id is not None:
+            qs = qs.filter(vendor_id=vendor_id)
+        if store_id is not None:
+            qs = qs.filter(order__store_id=store_id)
+        if from_date:
+            qs = qs.filter(created_at__gte=from_date)
+        if to_date:
+            qs = qs.filter(created_at__lte=to_date)
+        if search and search.strip():
+            s = search.strip()
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(memo_number__icontains=s) |
+                Q(order__order_number__icontains=s) |
+                Q(store_name_snapshot__icontains=s) |
+                Q(walk_in_code_snapshot__icontains=s)
+            )
+        return qs.order_by('-created_at')
+
+    @staticmethod
+    def get_customer_spending_summary(customer_id: int) -> dict:
+        """
+        Database aggregation of customer spending across all stores.
+        Returns total spent, total saved, memo count, and store breakdown.
+        """
+        from django.db.models import Sum, Count, Max
+        from django.db.models.functions import Coalesce
+        from decimal import Decimal
+
+        base_qs = SalesMemo.objects.filter(customer_id=customer_id, is_deleted=False)
+
+        aggregates = base_qs.aggregate(
+            total_spent=Coalesce(Sum('amount_paid'), Decimal('0.00')),
+            total_saved=Coalesce(Sum('discount_amount'), Decimal('0.00')),
+            total_memos=Count('id')
+        )
+
+        store_stats = (
+            base_qs.values('order__store_id', 'store_name_snapshot')
+            .annotate(
+                memo_count=Count('id'),
+                total_spent=Coalesce(Sum('amount_paid'), Decimal('0.00')),
+                last_visit=Max('created_at')
+            )
+            .order_by('-total_spent')
+        )
+
+        store_breakdown = [
+            {
+                'store_id': s['order__store_id'],
+                'store_name': s['store_name_snapshot'],
+                'memo_count': s['memo_count'],
+                'total_spent': str(s['total_spent']),
+                'last_visit': s['last_visit'].isoformat() if s['last_visit'] else None
+            }
+            for s in store_stats
+        ]
+
+        return {
+            'total_spent': str(aggregates['total_spent']),
+            'total_saved': str(aggregates['total_saved']),
+            'total_memos': aggregates['total_memos'],
+            'stores_visited_count': len(store_breakdown),
+            'store_breakdown': store_breakdown
+        }

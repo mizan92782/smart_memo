@@ -635,8 +635,59 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 ```
 
 ### `GET /orders/{id}/sales_memo/`
-- **Description**: Download or view finalized immutable sales memo receipt. Contains `walk_in_code_snapshot`.
+- **Description**: Download or view finalized immutable sales memo receipt. Contains itemized breakdown, discounts, totals, `walk_in_code_snapshot`, and monospace `thermal_receipt`. Passing `?receipt_format=thermal` returns raw plain-text formatted slip.
 - **Permissions**: `IsAuthenticated` (Order Customer or Store Vendor).
+- **Query Parameters**:
+  - `receipt_format`: Set to `thermal` or `text` to receive direct plain text 40-col slip.
+
+### `GET /orders/{id}/thermal-receipt/`
+- **Description**: Direct endpoint returning standard 40-column monospace thermal receipt slip (`text/plain; charset=utf-8`) ready for 58mm / 80mm Bluetooth / USB POS printers or terminal display.
+- **Permissions**: `IsAuthenticated` (Order Customer or Store Vendor).
+
+### `GET /orders/sales-memos/`
+- **Description**: Digital Sales Memo History / Receipt Wallet. Enables customers to browse, filter, search, and paginate through all finalized digital sales receipts across all visited stores. Vendors can list sales memos for their store(s) with `?as_vendor=true`.
+- **Permissions**: `IsAuthenticated` (Customer sees their own memos; Vendor sees their store memos; Staff/Superuser sees all).
+- **Query Parameters**:
+  - `store_id`: Filter memos by a specific store ID.
+  - `from_date`: Filter memos on or after timestamp (ISO format).
+  - `to_date`: Filter memos on or before timestamp (ISO format).
+  - `search`: Search query matching memo number, order number, store name, or walk-in code.
+  - `as_vendor`: If `true`, queries from store vendor perspective instead of customer perspective.
+  - `page`, `page_size`: Standard collection pagination.
+
+### `GET /orders/customer-spending/`
+- **Description**: Multi-store customer spending analytics. Computes server-side SQL database aggregations of the authenticated customer's total expenditure, total savings, total visited stores, and detailed store-by-store breakdown.
+- **Permissions**: `IsAuthenticated` (strictly scoped to `request.user`).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Customer multi-store spending analytics retrieved.",
+  "data": {
+    "total_spent": "1590.00",
+    "total_saved": "50.00",
+    "total_memos": 3,
+    "stores_visited_count": 2,
+    "store_breakdown": [
+      {
+        "store_id": 1,
+        "store_name": "Green Valley Grocery",
+        "memo_count": 2,
+        "total_spent": "1350.00",
+        "last_visit": "2026-10-24T18:30:00Z"
+      },
+      {
+        "store_id": 2,
+        "store_name": "Sunrise Bakery",
+        "memo_count": 1,
+        "total_spent": "240.00",
+        "last_visit": "2026-10-24T19:00:00Z"
+      }
+    ]
+  },
+  "errors": null
+}
+```
 
 ---
 

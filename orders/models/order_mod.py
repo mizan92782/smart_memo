@@ -240,5 +240,76 @@ class SalesMemo(BaseModel):
             kwargs['update_fields'] = update_fields
         super().save(*args, **kwargs)
 
+    def format_thermal_receipt(self, width: int = 40) -> str:
+        """
+        Formats this sales memo into a clean, 40-column monospace thermal receipt slip.
+        Suitable for 58mm / 80mm POS thermal printers and mobile/terminal receipt rendering.
+        """
+        w = max(32, width)
+        lines = []
+
+        def center(text: str) -> str:
+            return text[:w].center(w)
+
+        def row(left: str, right: str) -> str:
+            space = w - len(left) - len(right)
+            if space < 1:
+                space = 1
+                left = left[:max(0, w - len(right) - 1)]
+            return f"{left}{' ' * space}{right}"
+
+        # Header
+        lines.append("=" * w)
+        lines.append(center(self.store_name_snapshot.upper()))
+        lines.append(center("Smart Memo System - Digital Receipt"))
+        lines.append("=" * w)
+
+        created_str = self.created_at.strftime('%Y-%m-%d %H:%M UTC') if self.created_at else ""
+        if created_str:
+            lines.append(row("Date:", created_str))
+        lines.append(row("Memo #:", self.memo_number))
+        if hasattr(self, 'order') and self.order:
+            lines.append(row("Order #:", getattr(self.order, 'order_number', '')))
+        if self.customer_email_snapshot:
+            lines.append(row("Customer:", self.customer_email_snapshot[:max(0, w - 11)]))
+        if self.walk_in_code_snapshot:
+            lines.append(row("Walk-In Code:", self.walk_in_code_snapshot))
+
+        lines.append("-" * w)
+        lines.append(row("ITEM", "QTY x PRICE   TOTAL"))
+        lines.append("-" * w)
+
+        # Items
+        for item in self.items_snapshot or []:
+            name = item.get('product_name', 'Item')
+            qty = str(item.get('quantity', '1'))
+            price = str(item.get('unit_price', '0.00'))
+            total = str(item.get('line_total', '0.00'))
+
+            lines.append(name[:w])
+            calc_str = f"{qty} x {price}"
+            lines.append(row(f"  {calc_str}", total))
+
+        lines.append("-" * w)
+        lines.append(row("Subtotal:", f"{self.subtotal:.2f}"))
+
+        if self.discount_amount and self.discount_amount > 0:
+            coupon_label = f"Discount ({self.coupon_code}):" if self.coupon_code else "Discount:"
+            lines.append(row(coupon_label, f"-{self.discount_amount:.2f}"))
+
+        if self.delivery_fee and self.delivery_fee > 0:
+            lines.append(row("Delivery Fee:", f"{self.delivery_fee:.2f}"))
+
+        lines.append("-" * w)
+        lines.append(row("TOTAL AMOUNT:", f"{self.total_amount:.2f}"))
+        lines.append(row("AMOUNT PAID:", f"{self.amount_paid:.2f}"))
+        lines.append("-" * w)
+
+        lines.append(center("Thank you for shopping with us!"))
+        lines.append(center("Keep this memo for your records"))
+        lines.append("=" * w)
+
+        return "\n".join(lines)
+
     def __str__(self):
         return f"{self.memo_number} for {self.order.order_number}"
