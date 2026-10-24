@@ -1,0 +1,15 @@
+# infra/grafana/provisioning/dashboards/dashboards.yml
+# Grafana Dashboard Provisioning — auto-loads dashboard JSON files
+apiVersion: 1
+
+providers:
+  - name: 'IKON Dashboards'
+    orgId: 1
+    folder: 'IKON Backend'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards
+      foldersFromFilesStructure: true

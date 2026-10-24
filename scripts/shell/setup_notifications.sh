@@ -1,0 +1,43 @@
+#!/bin/bash
+
+echo "=========================================="
+echo "Email Notification System Setup"
+echo "=========================================="
+echo ""
+
+echo "Step 1: Creating migrations..."
+python manage.py makemigrations notifications
+
+echo ""
+echo "Step 2: Applying migrations..."
+python manage.py migrate
+
+echo ""
+echo "=========================================="
+echo "✅ Email Notification System Setup Complete!"
+echo "=========================================="
+echo ""
+echo "Next Steps:"
+echo "1. Configure Gmail SMTP in .env file:"
+echo "   EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend"
+echo "   EMAIL_HOST=smtp.gmail.com"
+echo "   EMAIL_PORT=587"
+echo "   EMAIL_USE_TLS=True"
+echo "   EMAIL_HOST_USER=info@ikon.ac"
+echo "   EMAIL_HOST_PASSWORD=your_app_specific_password"
+echo ""
+echo "2. Test email sending in Django shell:"
+echo "   python manage.py shell"
+echo "   >>> from notifications.services.email_service import EmailService"
+echo "   >>> # Test email methods"
+echo ""
+echo "3. View notifications in admin:"
+echo "   http://localhost:8000/admin/notifications/notificationlog/"
+echo ""
+echo "4. Access API endpoints:"
+echo "   GET /notifications/notifications/"
+echo "   GET /notifications/notifications/{id}/"
+echo ""
+echo "5. View Swagger documentation:"
+echo "   http://localhost:8000/swagger/"
+echo ""

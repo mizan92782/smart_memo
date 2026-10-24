@@ -1,0 +1,229 @@
+# ─────────────────────────────────────────────────────────────────────────────
+#  .pre-commit-config.yaml
+#  Pre-commit hooks for safe, consistent commits on IKON Backend
+#
+#  Install:
+#    pip install pre-commit
+#    pre-commit install              ← installs git hook
+#    pre-commit install --hook-type commit-msg  ← installs commit-msg hook
+#
+#  Run manually:
+#    pre-commit run --all-files      ← run all hooks on every file
+#    pre-commit run ruff             ← run a specific hook
+#    pre-commit autoupdate           ← update all hooks to latest versions
+#
+#  Skip a hook for one commit (emergency only):
+#    git commit -m "msg" --no-verify
+# ─────────────────────────────────────────────────────────────────────────────
+
+default_language_version:
+  python: python3
+
+default_stages: [pre-commit]
+
+fail_fast: false   # run all hooks even if one fails (full report each commit)
+
+
+repos:
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  1. FILE HYGIENE — trailing whitespace, line endings, file sizes
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+        args: [--markdown-linebreak-ext=md]
+
+      # Ensure every file ends with a newline
+      - id: end-of-file-fixer
+        exclude: "^(staticfiles/|media/)"
+
+      # Catch Windows CRLF line endings
+      - id: mixed-line-ending
+        args: [--fix=lf]
+
+      # Prevent adding files larger than 2MB
+      - id: check-added-large-files
+        args: [--maxkb=2048]
+
+      # Detect leftover merge conflict markers (<<<<<<, ======, >>>>>>>)
+      - id: check-merge-conflict
+
+      # Prevent case-insensitive filename conflicts (Linux vs macOS/Windows)
+      - id: check-case-conflict
+
+      # Prevent committing directly to main/master (use PRs)
+      - id: no-commit-to-branch
+        args: [--branch=main, --branch=master, --branch=production]
+
+      # Ensure executables have shebangs
+      - id: check-executables-have-shebangs
+
+      # Detect symlinks that point to nothing
+      - id: check-symlinks
+
+      # Remove dead symlinks
+      - id: destroyed-symlinks
+
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  2. PYTHON — debug statements, ast validity
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # Block committing Python debug statements (breakpoint(), pdb, etc.)
+      - id: debug-statements
+
+      # Validate Python syntax by parsing the AST
+      - id: check-ast
+
+      # Detect private keys accidentally committed
+      - id: detect-private-key
+
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  3. YAML / JSON / TOML / DOCKER — config file validation
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      # Validate YAML files (docker-compose, prometheus, loki, etc.)
+      - id: check-yaml
+        args: [--unsafe]          # --unsafe allows custom YAML tags
+        exclude: "infra/alratmanager/alertmanager.yml.template"  # has ${} vars
+
+      # Validate JSON files
+      - id: check-json
+
+      # Validate TOML files
+      - id: check-toml
+
+      # Validate .env files don't have syntax errors
+      - id: check-dotenv
+
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  4. RUFF — Python linter (replaces flake8, isort, pyupgrade)
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.5.0
+    hooks:
+      # Linter — catches errors, style issues, unused imports, etc.
+      - id: ruff
+        args:
+          - --fix                 # auto-fix safe issues
+          - --exit-non-zero-on-fix  # fail if fixes were needed (forces review)
+        types_or: [python, pyi]
+
+      # Formatter — replaces Black
+      - id: ruff-format
+        types_or: [python, pyi]
+
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  5. BANDIT — Python security linter
+  #     Catches: SQL injection, hardcoded passwords, insecure functions, etc.
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.7.9
+    hooks:
+      - id: bandit
+        args:
+          - --configfile=.bandit.yaml   # see .bandit.yaml for exclusions
+          - --severity-level=medium     # only flag medium+ severity issues
+          - --confidence-level=medium
+        exclude: |
+          (?x)^(
+            scripts/tests/.*|
+            scripts/fixes/.*|
+            scripts/seeds/.*
+          )$
+
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  6. DETECT-SECRETS — prevent committing secrets / API keys
+  #     First run: detect-secrets scan > .secrets.baseline
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/Yelp/detect-secrets
+    rev: v1.5.0
+    hooks:
+      - id: detect-secrets
+        args: [--baseline, .secrets.baseline]
+        exclude: |
+          (?x)^(
+            \.env\.example|
+            \.env\.template|
+            docs/.*
+          )$
+
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  7. DOCKERFILE LINTER — hadolint
+  #     Catches: missing --no-install-recommends, latest tags, etc.
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/hadolint/hadolint
+    rev: v2.12.0
+    hooks:
+      - id: hadolint-docker
+        args:
+          - --ignore=DL3008      # apt-get install without version pin (flexible in dev)
+          - --ignore=DL3009      # delete apt lists
+          - --ignore=DL3013      # pip install without pinning (handled by requirements.txt)
+
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  8. CONVENTIONAL COMMITS — enforce commit message format
+  #     Format: type(scope): description
+  #     Examples:
+  #       feat(auth): add OTP login flow
+  #       fix(redis): handle connection timeout gracefully
+  #       chore: update dependencies
+  #       docs: add API documentation
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v3.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]      # runs on commit message, not file content
+        args:
+          # Allowed commit types
+          - feat      # new feature
+          - fix       # bug fix
+          - docs      # documentation only
+          - style     # formatting, no logic change
+          - refactor  # code restructure, no feature/fix
+          - perf      # performance improvement
+          - test      # adding/updating tests
+          - build     # build system / dependencies
+          - ci        # CI/CD config changes
+          - chore     # maintenance tasks
+          - revert    # reverts a previous commit
+
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  #  9. DJANGO CHECKS — migrations and system check
+  #     Runs inside virtualenv — skipped if Django not installed
+  # ═══════════════════════════════════════════════════════════════════════════
+  - repo: local
+    hooks:
+      # Check for missing migrations (fail if you forgot to run makemigrations)
+      - id: django-check-migrations
+        name: Django — check for missing migrations
+        language: system
+        entry: python manage.py migrate --check --no-input
+        types: [python]
+        pass_filenames: false
+        # Only run when model files change
+        files: "^(authentication|configuration|enrollment|learning|lesson|progress|degree|gamification|notifications|practitioner|partnership|questionbank|collaboration)/models/.*\\.py$"
+
+      # Run Django system check on every Python change
+      - id: django-check
+        name: Django — system check
+        language: system
+        entry: python manage.py check
+        types: [python]
+        pass_filenames: false
+        files: "^(authentication|configuration|shared|project)/.*\\.py$"

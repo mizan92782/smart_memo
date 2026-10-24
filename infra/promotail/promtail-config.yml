@@ -1,0 +1,85 @@
+# infra/promotail/promtail-config.yml
+# Promtail Configuration — Log Shipping Agent
+# Reads log files → ships them to Loki
+# ─────────────────────────────────────────────────────────
+
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml    # Tracks file read positions across restarts
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+    tenant_id: ""                  # Leave empty for single-tenant Loki
+
+scrape_configs:
+  # ── Django Application Logs ───────────────────────────────────────────────
+  - job_name: django_app_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: django
+          app: ikon-backend
+          env: production
+          __path__: /app/logs/app.log
+
+  # ── Django Error Logs ─────────────────────────────────────────────────────
+  - job_name: django_error_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: django_errors
+          app: ikon-backend
+          env: production
+          level: error
+          __path__: /app/logs/errors.log
+
+  # ── Celery Worker Logs ────────────────────────────────────────────────────
+  - job_name: celery_worker_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: celery_worker
+          app: ikon-backend
+          __path__: /app/logs/celery_worker.log
+
+  # ── Celery Beat Logs ──────────────────────────────────────────────────────
+  - job_name: celery_beat_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: celery_beat
+          app: ikon-backend
+          __path__: /app/logs/celery_beat.log
+
+  # ── Nginx Access Logs ─────────────────────────────────────────────────────
+  - job_name: nginx_access_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          type: access
+          __path__: /var/log/nginx/access.log
+    pipeline_stages:
+      - regex:
+          expression: '(?P<remote_addr>\S+) .* \[(?P<time_local>[^\]]+)\] "(?P<method>\S+) (?P<request_uri>\S+) \S+" (?P<status>\d+) (?P<body_bytes>\d+)'
+      - labels:
+          method:
+          status:
+
+  # ── Nginx Error Logs ──────────────────────────────────────────────────────
+  - job_name: nginx_error_logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: nginx
+          type: error
+          __path__: /var/log/nginx/error.log

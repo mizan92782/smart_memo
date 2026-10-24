@@ -1,4 +1,4 @@
-import lorem
+from shared.utilities.products_default_description import product_default_description
 
-def product_default_description():
-    return lorem.paragraph()
+__all__ = ['product_default_description']
+

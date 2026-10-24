@@ -1,0 +1,132 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# ruff.toml — Ruff Linter + Formatter Configuration
+# Ruff replaces: flake8, isort, pyupgrade, pep8-naming, and more.
+# Docs: https://docs.astral.sh/ruff/
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Target Python version
+target-version = "py312"
+
+# Max line length (Black-compatible)
+line-length = 100
+
+# Files/directories to exclude from linting
+exclude = [
+    ".git",
+    ".venv",
+    "venv",
+    "env",
+    "__pycache__",
+    "staticfiles",
+    "media",
+    "migrations",           # Django auto-generated migration files
+    "node_modules",
+    "*.egg-info",
+    "dist",
+    "build",
+]
+
+[lint]
+# Enable rule sets:
+#   E   — pycodestyle errors
+#   F   — pyflakes (undefined names, unused imports, etc.)
+#   W   — pycodestyle warnings
+#   I   — isort (import ordering)
+#   N   — pep8-naming (class names, function names)
+#   UP  — pyupgrade (use modern Python syntax)
+#   B   — flake8-bugbear (common bugs and design issues)
+#   C4  — flake8-comprehensions (simplify comprehensions)
+#   SIM — flake8-simplify (simplify boolean expressions, etc.)
+#   DJ  — flake8-django (Django-specific checks)
+#   S   — flake8-bandit (security — basic subset)
+#   T20 — flake8-print (catch stray print() statements)
+#   RUF — Ruff-native rules
+select = [
+    "E", "F", "W",
+    "I",
+    "N",
+    "UP",
+    "B",
+    "C4",
+    "SIM",
+    "DJ",
+    "T20",
+    "RUF",
+]
+
+# Rules to ignore globally:
+ignore = [
+    "E501",    # line too long — handled by formatter
+    "B008",    # do not perform function calls in default arguments (common in Django/DRF)
+    "B904",    # raise from — not always needed
+    "N805",    # first argument of method should be 'self' — conflicts with cls patterns
+    "SIM108",  # use ternary operator — sometimes explicit if/else is clearer
+    "T201",    # print() found — we intentionally use print() in management commands & scripts
+    "RUF012",  # mutable class attributes — Django model fields are defined this way
+    "UP007",   # use X | Y for type hints — requires Python 3.10+
+]
+
+# Per-file ignores — relax rules for specific file types
+[lint.per-file-ignores]
+"**/migrations/*.py" = [
+    "E501",   # migration files have long auto-generated lines
+    "F401",   # unused imports are common in migrations
+    "N806",   # variable in function should be lowercase
+]
+"scripts/**/*.py" = [
+    "T201",   # print() is intentional in scripts
+    "S101",   # assert is fine in test scripts
+    "S106",   # hardcoded passwords in test scripts
+]
+"**/tests/**/*.py" = [
+    "S101",   # assert is expected in tests
+    "S106",   # hardcoded test passwords
+]
+"**/settings*.py" = [
+    "F401",   # star imports acceptable in settings overrides
+    "E402",   # module level import not at top (settings have conditional imports)
+]
+"manage.py" = [
+    "T201",
+]
+
+[lint.isort]
+# Keep Django imports organized: stdlib → third-party → local
+known-first-party = [
+    "project",
+    "authentication",
+    "configuration",
+    "shared",
+    "middleware",
+    "logs",
+    "infra",
+    "enrollment",
+    "learning",
+    "lesson",
+    "progress",
+    "degree",
+    "gamification",
+    "notifications",
+    "practitioner",
+    "partnership",
+    "questionbank",
+    "collaboration",
+]
+force-sort-within-sections = true
+split-on-trailing-comma = true
+
+[lint.pydocstyle]
+convention = "google"     # enforce Google-style docstrings
+
+[format]
+# Use double quotes (consistent with Django ecosystem)
+quote-style = "double"
+
+# Indent with 4 spaces
+indent-style = "space"
+
+# Always add trailing comma in multi-line structures
+skip-magic-trailing-comma = false
+
+# Normalize string quotes
+docstring-code-format = true

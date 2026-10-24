@@ -1,0 +1,114 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# infra/alratmanager/alertmanager.yml.template
+# ─────────────────────────────────────────────────────────────────────────────
+# This is a TEMPLATE file. DO NOT edit alertmanager.yml directly.
+# All ${VARIABLE} placeholders are substituted at container startup
+# by infra/alratmanager/entrypoint.sh using `envsubst`.
+#
+# Configure all values in your .env file:
+#   ALERT_EMAIL_FROM, ALERT_EMAIL_USER, ALERT_EMAIL_PASS,
+#   ALERT_EMAIL_TO, ALERT_SMTP_HOST, ALERT_SMTP_PORT,
+#   TELEGRAM_BOT_TOKEN, TELEGRAM_CHAT_ID, TELEGRAM_DEV_CHAT_ID
+# ─────────────────────────────────────────────────────────────────────────────
+
+global:
+  # ── SMTP (email alerts) ───────────────────────────────────────────────────
+  smtp_smarthost: '${ALERT_SMTP_HOST}:${ALERT_SMTP_PORT}'
+  smtp_from: '${ALERT_EMAIL_FROM}'
+  smtp_auth_username: '${ALERT_EMAIL_USER}'
+  smtp_auth_password: '${ALERT_EMAIL_PASS}'
+  smtp_require_tls: true
+  resolve_timeout: 5m
+
+  # ── Telegram defaults ─────────────────────────────────────────────────────
+  # Used by all telegram_configs receivers unless overridden locally
+  telegram_api_url: 'https://api.telegram.org'
+
+# ── Templates ─────────────────────────────────────────────────────────────────
+templates:
+  - '/etc/alertmanager/templates/*.tmpl'
+
+# ── Routing Tree ──────────────────────────────────────────────────────────────
+route:
+  receiver: 'default-receiver'
+  group_by: ['alertname', 'env', 'severity']
+  group_wait:      30s
+  group_interval:  5m
+  repeat_interval: 4h
+
+  routes:
+    # Critical → email + Telegram
+    - matchers:
+        - severity = "critical"
+      receiver: 'critical-receiver'
+      continue: true
+
+    # Warning → Telegram only
+    - matchers:
+        - severity = "warning"
+      receiver: 'telegram-prod-receiver'
+
+    # Dev env → dev Telegram group
+    - matchers:
+        - env = "dev"
+      receiver: 'dev-receiver'
+
+# ── Receivers ────────────────────────────────────────────────────────────────
+receivers:
+
+  # Default: email + Telegram (production)
+  - name: 'default-receiver'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO}'
+        send_resolved: true
+        html: '{{ template "email.html" . }}'
+        headers:
+          subject: '{{ template "email.subject" . }}'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        message: '{{ template "telegram.message" . }}'
+        send_resolved: true
+        parse_mode: 'HTML'
+
+  # Critical: email + Telegram
+  - name: 'critical-receiver'
+    email_configs:
+      - to: '${ALERT_EMAIL_TO}'
+        send_resolved: true
+        html: '{{ template "email.html" . }}'
+        headers:
+          subject: '🚨 [CRITICAL] {{ template "email.subject" . }}'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        message: '🚨 {{ template "telegram.message" . }}'
+        send_resolved: true
+        parse_mode: 'HTML'
+
+  # Telegram-only (warnings)
+  - name: 'telegram-prod-receiver'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_CHAT_ID}
+        message: '⚠️ {{ template "telegram.message" . }}'
+        send_resolved: true
+        parse_mode: 'HTML'
+
+  # Dev: separate Telegram group (no email spam during dev)
+  - name: 'dev-receiver'
+    telegram_configs:
+      - bot_token: '${TELEGRAM_BOT_TOKEN}'
+        chat_id: ${TELEGRAM_DEV_CHAT_ID}
+        message: '🛠️ [DEV] {{ template "telegram.message" . }}'
+        send_resolved: true
+        parse_mode: 'HTML'
+
+# ── Inhibit Rules ─────────────────────────────────────────────────────────────
+inhibit_rules:
+  # Suppress warnings when critical is firing for the same alert
+  - source_matchers:
+      - severity = "critical"
+    target_matchers:
+      - severity = "warning"
+    equal: ['alertname', 'instance']

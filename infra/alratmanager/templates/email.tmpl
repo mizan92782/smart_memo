@@ -1,0 +1,67 @@
+{{ define "email.subject" -}}
+[{{ .Status | toUpper }}] {{ .GroupLabels.alertname }} — {{ .GroupLabels.env | default "production" }}
+{{- end }}
+
+
+{{ define "email.html" }}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body    { font-family: Arial, sans-serif; background:#f4f4f4; margin:0; padding:20px; }
+    .wrap   { background:#fff; border-radius:8px; padding:0; max-width:620px; margin:auto;
+              box-shadow:0 2px 8px rgba(0,0,0,.1); overflow:hidden; }
+    .header { background:{{ if eq .Status "firing" }}#c0392b{{ else }}#27ae60{{ end }};
+              color:#fff; padding:20px 24px; }
+    .header h2 { margin:0 0 4px; font-size:20px; }
+    .header p  { margin:0; opacity:.85; font-size:13px; }
+    .body   { padding:20px 24px; }
+    .alert  { border-left:4px solid {{ if eq .Status "firing" }}#e74c3c{{ else }}#2ecc71{{ end }};
+              background:#fafafa; padding:12px 16px; margin:12px 0; border-radius:0 4px 4px 0; }
+    .label  { font-weight:bold; color:#555; min-width:100px; display:inline-block; }
+    .val    { color:#222; }
+    .badge  { display:inline-block; padding:2px 8px; border-radius:12px; font-size:12px;
+              font-weight:bold; color:#fff;
+              background:{{ if eq .Status "firing" }}#e74c3c{{ else }}#2ecc71{{ end }}; }
+    .footer { padding:12px 24px; background:#f8f8f8; font-size:11px; color:#999;
+              border-top:1px solid #eee; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="header">
+    <h2>{{ if eq .Status "firing" }}🚨 Alert Firing{{ else }}✅ Alert Resolved{{ end }}</h2>
+    <p>{{ .GroupLabels.alertname }} &nbsp;|&nbsp; Env: {{ .GroupLabels.env | default "production" }}</p>
+  </div>
+  <div class="body">
+    {{ range .Alerts }}
+    <div class="alert">
+      <p><span class="label">Status</span> <span class="badge">{{ $.Status | toUpper }}</span></p>
+      <p><span class="label">Alert</span>    <span class="val">{{ .Labels.alertname }}</span></p>
+      <p><span class="label">Severity</span> <span class="val">{{ .Labels.severity | default "N/A" }}</span></p>
+      <p><span class="label">Instance</span> <span class="val">{{ .Labels.instance | default "N/A" }}</span></p>
+      <p><span class="label">Summary</span>  <span class="val">{{ .Annotations.summary | default "No summary" }}</span></p>
+      <p><span class="label">Detail</span>   <span class="val">{{ .Annotations.description | default "—" }}</span></p>
+      <p><span class="label">Started</span>  <span class="val">{{ .StartsAt.Format "2006-01-02 15:04:05 UTC" }}</span></p>
+      {{ if not .EndsAt.IsZero }}<p><span class="label">Resolved</span> <span class="val">{{ .EndsAt.Format "2006-01-02 15:04:05 UTC" }}</span></p>{{ end }}
+    </div>
+    {{ end }}
+  </div>
+  <div class="footer">IKON Backend Monitoring &nbsp;|&nbsp; Powered by Prometheus + Alertmanager</div>
+</div>
+</body>
+</html>
+{{ end }}
+
+
+{{ define "telegram.message" -}}
+<b>{{ if eq .Status "firing" }}🚨 FIRING{{ else }}✅ RESOLVED{{ end }}</b> — <b>{{ .GroupLabels.alertname }}</b>
+{{ range .Alerts -}}
+<b>Severity:</b> {{ .Labels.severity | default "N/A" }}
+<b>Instance:</b> {{ .Labels.instance | default "N/A" }}
+<b>Summary:</b> {{ .Annotations.summary | default "No summary" }}
+{{ if .Annotations.description }}<b>Detail:</b> {{ .Annotations.description }}{{ end }}
+<b>Started:</b> {{ .StartsAt.Format "2006-01-02 15:04:05" }} UTC
+{{ end -}}
+{{- end }}

@@ -1,0 +1,294 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# docker-compose.prod.yml — PRODUCTION STACK
+# ─────────────────────────────────────────────────────────────────────────────
+# Services:
+#   Core:        db, redis, web, celery, celery-beat
+#   Monitoring:  prometheus, grafana, loki, promtail, alertmanager
+#   Exporters:   postgres-exporter, redis-exporter, node-exporter
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ════════════════════════════════════════════════════════════
+  # CORE SERVICES
+  # ════════════════════════════════════════════════════════════
+
+  db:
+    image: postgres:15-alpine
+    container_name: ikon_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  redis:
+    image: redis:7-alpine
+    container_name: ikon_redis_prod
+    restart: always
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - backend
+
+  web:
+    image: 797671034027.dkr.ecr.ap-southeast-1.amazonaws.com/ikon-backend:${IMAGE_TAG:-latest}
+    container_name: ikon_web_prod
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - .env
+    ports:
+      - "8005:8000"
+    volumes:
+      - staticfiles_prod:/app/staticfiles
+      - media_prod:/app/media
+      - logs_prod:/app/logs                    # ← shared log volume for Promtail
+    command: >
+      sh -c "python manage.py migrate --noinput &&
+             python manage.py collectstatic --noinput &&
+             gunicorn project.wsgi:application
+               --bind 0.0.0.0:8000
+               --workers 3
+               --timeout 120
+               --access-logfile -
+               --error-logfile -
+               --log-level info
+               --capture-output
+               --enable-stdio-inheritance"
+    networks:
+      - backend
+      - monitoring
+
+  celery:
+    image: 797671034027.dkr.ecr.ap-southeast-1.amazonaws.com/ikon-backend:${IMAGE_TAG:-latest}
+    container_name: ikon_celery_prod
+    restart: always
+    command: python -m celery -A smart_memo worker --loglevel=info --concurrency=4 --logfile=/app/logs/celery_worker.log
+    env_file:
+      - .env
+    volumes:
+      - logs_prod:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  celery-beat:
+    image: 797671034027.dkr.ecr.ap-southeast-1.amazonaws.com/ikon-backend:${IMAGE_TAG:-latest}
+    container_name: ikon_celery_beat_prod
+    restart: always
+    command: python -m celery -A smart_memo beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler --logfile=/app/logs/celery_beat.log
+    env_file:
+      - .env
+    volumes:
+      - logs_prod:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - backend
+
+  # ════════════════════════════════════════════════════════════
+  # METRICS EXPORTERS
+  # ════════════════════════════════════════════════════════════
+
+  postgres-exporter:
+    image: prometheuscommunity/postgres-exporter:latest
+    container_name: ikon_postgres_exporter
+    restart: always
+    environment:
+      DATA_SOURCE_NAME: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}?sslmode=disable"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - backend
+      - monitoring
+
+  redis-exporter:
+    image: oliver006/redis_exporter:latest
+    container_name: ikon_redis_exporter
+    restart: always
+    environment:
+      REDIS_ADDR: "redis://redis:6379"
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    depends_on:
+      - redis
+    networks:
+      - backend
+      - monitoring
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: ikon_node_exporter
+    restart: always
+    pid: "host"
+    volumes:
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /:/rootfs:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.mount-points-exclude=^/(sys|proc|dev|host|etc)($$|/)'
+    networks:
+      - monitoring
+
+  # ════════════════════════════════════════════════════════════
+  # PROMETHEUS — Metrics Scraping
+  # ════════════════════════════════════════════════════════════
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: ikon_prometheus
+    restart: always
+    volumes:
+      - ./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--web.enable-lifecycle'                # hot reload: curl -X POST http://prometheus:9090/-/reload
+    ports:
+      - "9090:9090"                             # exposed for debugging; restrict in prod via firewall
+    networks:
+      - monitoring
+
+  # ════════════════════════════════════════════════════════════
+  # LOKI — Log Aggregation
+  # ════════════════════════════════════════════════════════════
+
+  loki:
+    image: grafana/loki:latest
+    container_name: ikon_loki
+    restart: always
+    volumes:
+      - ./infra/loki/loki-config.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - monitoring
+
+  # ════════════════════════════════════════════════════════════
+  # PROMTAIL — Log Shipping Agent
+  # ════════════════════════════════════════════════════════════
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: ikon_promtail
+    restart: always
+    volumes:
+      - ./infra/promotail/promtail-config.yml:/etc/promtail/config.yml:ro
+      - logs_prod:/app/logs:ro                  # reads Django/Celery logs
+      - /var/log/nginx:/var/log/nginx:ro         # reads Nginx logs
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    depends_on:
+      - loki
+    networks:
+      - monitoring
+
+  # ════════════════════════════════════════════════════════════
+  # ALERTMANAGER — Alert Routing
+  # ════════════════════════════════════════════════════════════
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: ikon_alertmanager
+    restart: always
+    # ── entrypoint runs envsubst to inject .env vars into the config template
+    entrypoint: ["/bin/sh", "/etc/alertmanager/entrypoint.sh"]
+    env_file:
+      - .env                                    # injects all ALERT_* and TELEGRAM_* vars
+    volumes:
+      - ./infra/alratmanager/alertmanager.yml.template:/etc/alertmanager/alertmanager.yml.template:ro
+      - ./infra/alratmanager/templates:/etc/alertmanager/templates:ro
+      - ./infra/alratmanager/entrypoint.sh:/etc/alertmanager/entrypoint.sh:ro
+      - alertmanager_data:/alertmanager
+    command:
+      - '--web.external-url=http://localhost:9093'
+    ports:
+      - "9093:9093"
+    networks:
+      - monitoring
+
+  # ════════════════════════════════════════════════════════════
+  # GRAFANA — Visualization Dashboard
+  # ════════════════════════════════════════════════════════════
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: ikon_grafana
+    restart: always
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro   # datasources + dashboards
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - monitoring
+
+# ════════════════════════════════════════════════════════════
+# NETWORKS
+# ════════════════════════════════════════════════════════════
+
+networks:
+  backend:
+    driver: bridge
+  monitoring:
+    driver: bridge
+
+# ════════════════════════════════════════════════════════════
+# VOLUMES
+# ════════════════════════════════════════════════════════════
+
+volumes:
+  postgres_data_prod:
+  redis_data_prod:
+  staticfiles_prod:
+  media_prod:
+  logs_prod:            # shared between web, celery, celery-beat, promtail
+  prometheus_data:
+  loki_data:
+  grafana_data:
+  alertmanager_data:

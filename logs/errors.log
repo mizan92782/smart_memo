@@ -1,0 +1,2 @@
+[ERROR] 2026-10-23 19:54:47 | GET Service Unavailable: /health/ready/ | status:503 | user:anonymous | duration:N/A
+[ERROR] 2026-10-23 19:55:59 | GET Service Unavailable: /health/ready/ | status:503 | user:anonymous | duration:N/A

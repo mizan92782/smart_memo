@@ -1,0 +1,33 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# .bandit.yaml — Bandit Security Linter Configuration
+# Bandit checks Python code for security vulnerabilities.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Directories to skip entirely
+exclude_dirs:
+  - .venv
+  - venv
+  - env
+  - .git
+  - staticfiles
+  - media
+  - migrations
+  - scripts/tests      # test scripts use hardcoded credentials intentionally
+  - scripts/fixes
+  - scripts/seeds
+
+# Skip specific test IDs:
+# B101 — assert statements (fine in tests)
+# B104 — binding to 0.0.0.0 (intentional in Docker)
+# B311 — random module (we use it for OTP, not crypto)
+# B324 — hashlib with sha256 (we use it for OTP hashing, not passwords)
+skips:
+  - B101
+  - B104
+  - B311
+
+# Minimum severity level to report: LOW / MEDIUM / HIGH
+severity: MEDIUM
+
+# Minimum confidence level to report: LOW / MEDIUM / HIGH
+confidence: MEDIUM
