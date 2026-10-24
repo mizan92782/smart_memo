@@ -68,8 +68,13 @@ This document is the living single source of truth for feature development statu
 | **25** | **Multi-Store Memos & In-Store Walk-In Shopping** | Marketplace parallel store draft memos, store-scoped active cards, in-store walk-in shopping mode, zero-fee walk-in checkout, vendor counter product handover & instant completion | 🟢 Completed | 🟢 9 Passing | 🟢 9 Passing | 🟢 Enforced |
 | **26** | **Database-Level User & Vendor Fields** | Direct database-level foreign keys (`user`/`customer` and `vendor`) across `Card`, `Order`, `SalesMemo`, auto-population from store/order, dual-perspective queries (`CardRepository.get_by_vendor`, `OrderRepository.get_by_vendor`), `as_vendor=true` API filter, serializer exposure | 🟢 Completed | 🟢 6 Passing | 🟢 6 Passing | 🟢 Enforced |
 | **27** | **Saved Store Memos & Multi-Memo Planning** | "Buy Next Time" planning memos (`is_saved_for_later`, `planned_visit_date`), memo deferral (`save-for-later`), activation with safe active memo swap (`activate`), cloning (`duplicate`), store-scoped saved listing (`GET /cards/saved/`) | 🟢 Completed | 🟢 7 Passing | 🟢 7 Passing | 🟢 Enforced |
+| **28** | **In-Store Counter POS & 6-Digit Walk-In Code** | Counter POS lookup (`POST /orders/counter-lookup/`), walk-in 6-digit numeric verification code, instant handover, immutable SalesMemo snapshot | 🟢 Completed | 🟢 7 Passing | 🟢 7 Passing | 🟢 Enforced |
+| **29** | **Digital Sales Memos, Receipts & Analytics** | Digital sales memo wallet (`GET /orders/sales-memos/`), thermal receipt 40-col formatting (`GET /orders/{id}/thermal-receipt/`), customer multi-store spending analytics (`GET /orders/customer-spending/`) | 🟢 Completed | 🟢 7 Passing | 🟢 7 Passing | 🟢 Enforced |
+| **30** | **In-Store Shelf Barcode Scanning & QR Code** | Product barcode/SKU shelf scanner (`POST /cards/{id}/scan-add/`), public barcode lookup (`GET /products/api/barcode-lookup/`), standalone vector SVG QR codes (`GET /orders/{id}/qr-code/`), quick 1-tap reordering (`POST /orders/{id}/reorder/`) | 🟢 Completed | 🟢 7 Passing | 🟢 7 Passing | 🟢 Enforced |
+| **31** | **In-Store Shelf Navigation & Basket Picking** | Aisle and shelf location tracking on products (`aisle`, `shelf_location`), basket picking checklist (`is_picked`, `picked_at`), progress metrics, toggle (`POST /cards/{id}/toggle-item-picked/`), batch pick (`POST /cards/{id}/batch-pick/`), walking aisle route sorting (`sort_by=aisle`) | 🟢 Completed | 🟢 6 Passing | 🟢 6 Passing | 🟢 Enforced |
+| **32** | **Cross-Store Memo Comparison & Store Transfer** | Memo budget limits (`budget_limit`, `budget_remaining`, `is_over_budget`, `budget_used_percent`, `PATCH /cards/{id}/set-budget/`), cross-store catalog comparison (`POST /cards/{id}/compare-store/`) with barcode->SKU->name matching, price difference and savings calculation, store memo transfer (`POST /cards/{id}/transfer-store/`) with coupon decoupling | 🟢 Completed | 🟢 5 Passing | 🟢 5 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 210 / 210 (100% Passing)*
+*Total Active Automated Tests Passing: 242 / 242 (100% Passing)*
 
 ---
 
@@ -104,6 +109,11 @@ This document is the living single source of truth for feature development statu
 | **Cards** | `cards/tests/test_multi_store_memos.py` | Multi-store parallel cards, store entry action, walk-in shopping mode, zero-fee checkout, counter handover | 🟢 Passing | 9 / 9 OK |
 | **Cards** | `cards/tests/test_database_level_fields.py` | Database-level user/customer and vendor fields on Card, Order, SalesMemo, auto-sync, vendor queries | 🟢 Passing | 6 / 6 OK |
 | **Cards** | `cards/tests/test_saved_memos.py` | Saved "buy next time" planning memos, deferral, activation with safe swap, duplicate, IDOR | 🟢 Passing | 7 / 7 OK |
+| **Products** | `products/tests/test_barcode_lookup.py` | Physical shelf barcode/SKU lookup, store catalog isolation | 🟢 Passing | 3 / 3 OK |
+| **Cards** | `cards/tests/test_barcode_scan_add.py` | Scan shelf barcode directly into draft shopping memo, auto-increment, stock check | 🟢 Passing | 3 / 3 OK |
+| **Orders** | `orders/tests/test_quick_reorder.py` | 1-tap quick reorder past order items into active shopping memo, catalog revalidation | 🟢 Passing | 1 / 1 OK |
+| **Cards** | `cards/tests/test_aisle_picking.py` | In-store basket picking, progress indicators, batch pick, aisle walking route sequence | 🟢 Passing | 6 / 6 OK |
+| **Cards** | `cards/tests/test_store_comparison_and_budget.py` | Cross-store comparison, price differences, memo store transfer, budget limits & over-budget alerts | 🟢 Passing | 5 / 5 OK |
 | **Orders** | `orders/tests/test_state_machine.py` | Order submission, acceptance, fulfillment, cancellation, Sales Memo | 🟢 Passing | 4 / 4 OK |
 | **Orders** | `orders/tests/test_idempotency.py` | Idempotency deduplication, cross-customer order isolation, cross-vendor isolation | 🟢 Passing | 3 / 3 OK |
 | **Orders** | `orders/tests/test_performance.py` | N+1 query prevention on orders listing and catalog search (`assertNumQueries`) | 🟢 Passing | 2 / 2 OK |
@@ -221,7 +231,14 @@ This document is the living single source of truth for feature development statu
   - Implemented line item physical basket picking endpoint `POST /cards/{id}/toggle-item-picked/` and bulk picking endpoint `POST /cards/{id}/batch-pick/`.
   - Implemented in-store walking aisle route sorting (`GET /cards/{id}/?sort_by=aisle` and `GET /cards/active/?store_id=<id>&sort_by=aisle`) sequencing products by physical store layout (`product__aisle`, `product__shelf_location`).
   - Added automated test suite: `test_aisle_picking.py` (6/6 passing).
-- Executed full test suite across entire SaaS platform: **237 / 237 tests passing (100% pass rate)**.
+- Implemented **Phase 32: Cross-Store Memo Comparison, Store Transfer & Shopping Budget Controls**:
+  - Added `budget_limit` (`DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)`) to `Card` model, serializer, and migration `cards.0009_card_budget_limit`.
+  - Added dynamic budget calculation properties on `Card`: `budget_remaining`, `is_over_budget`, and `budget_used_percent`.
+  - Implemented budget management endpoint `PATCH /cards/{id}/set-budget/` in `CardViewSet` and `CardService.set_budget_limit()`.
+  - Implemented cross-store shopping memo comparison endpoint `POST /cards/{id}/compare-store/` via `CardService.compare_with_store()` resolving items by **Barcode -> SKU -> Case-Insensitive Product Name**, calculating price variances, total potential savings, missing items, and fulfillment feasibility.
+  - Implemented store memo transfer endpoint `POST /cards/{id}/transfer-store/` via `CardService.transfer_to_store()` re-binding items to target store catalog, updating store and vendor foreign keys, clearing store-specific coupons, and supporting `omit_missing` and `clone` options.
+  - Added automated test suite: `test_store_comparison_and_budget.py` (5/5 passing).
+- Executed full test suite across entire SaaS platform: **242 / 242 tests passing (100% pass rate)**.
 
 ---
 

@@ -443,4 +443,79 @@ class CardViewSet(viewsets.ModelViewSet):
         except (ValueError, PermissionError) as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['patch', 'post'], url_path='set-budget')
+    def set_budget(self, request, pk=None):
+        """Set or update the spending budget ceiling for this shopping memo."""
+        card = self.get_object()
+        budget_limit = request.data.get('budget_limit')
+        try:
+            card = CardService.set_budget_limit(
+                card=card,
+                budget_limit=budget_limit,
+                actor=request.user
+            )
+            return custome_success_response(
+                message=f"Shopping budget limit updated to {card.budget_limit}." if card.budget_limit else "Shopping budget limit cleared.",
+                data=CardSerializer(card).data
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='compare-store')
+    def compare_store(self, request, pk=None):
+        """Compare this memo's products, pricing, and stock availability against another store."""
+        card = self.get_object()
+        target_store_id = request.data.get('target_store_id')
+        if not target_store_id:
+            return custome_error_response("target_store_id is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            report = CardService.compare_with_store(
+                card=card,
+                target_store_id=int(target_store_id),
+                actor=request.user
+            )
+            # Remove internal reference before returning
+            report.pop('_internal_matched_items', None)
+            return custome_success_response(
+                message=f"Store comparison generated against '{report['target_store']['name']}'.",
+                data=report
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='transfer-store')
+    def transfer_store(self, request, pk=None):
+        """Transfer or clone this shopping memo to another store with local catalog re-binding."""
+        card = self.get_object()
+        target_store_id = request.data.get('target_store_id')
+        if not target_store_id:
+            return custome_error_response("target_store_id is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        clone = request.data.get('clone', False)
+        if isinstance(clone, str):
+            clone = clone.lower() in ['true', '1']
+
+        omit_missing = request.data.get('omit_missing', True)
+        if isinstance(omit_missing, str):
+            omit_missing = omit_missing.lower() in ['true', '1']
+
+        try:
+            result_card = CardService.transfer_to_store(
+                card=card,
+                target_store_id=int(target_store_id),
+                actor=request.user,
+                clone=clone,
+                omit_missing=omit_missing
+            )
+            action_desc = "cloned to" if clone else "transferred to"
+            return custome_success_response(
+                message=f"Shopping memo {action_desc} '{result_card.store.name}' successfully.",
+                data=CardSerializer(result_card).data,
+                status_code=status.HTTP_201_CREATED if clone else status.HTTP_200_OK
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+
 

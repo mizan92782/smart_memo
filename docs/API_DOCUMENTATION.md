@@ -615,6 +615,109 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 - **Description**: Walking Route Optimization. Sorts memo items by store physical layout (`product__aisle`, `product__shelf_location`, `id`) so in-store walk-in shoppers can walk through the physical aisles sequentially (e.g. Aisle 1 -> Aisle 2 -> Aisle 3) without backtracking.
 - **Permissions**: `IsAuthenticated` (Customer owns memo).
 
+### `PATCH /cards/{id}/set-budget/`
+- **Description**: Sets, updates, or clears (`"budget_limit": null`) the shopping budget ceiling for the memo. Exposes computed fields `budget_remaining`, `is_over_budget`, and `budget_used_percent` on the card object.
+- **Permissions**: `IsAuthenticated` (Customer owns memo).
+- **Request Body**:
+```json
+{
+  "budget_limit": "200.00"
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Budget limit set to 200.00.",
+  "data": {
+    "id": 5,
+    "budget_limit": "200.00",
+    "budget_remaining": "50.00",
+    "is_over_budget": false,
+    "budget_used_percent": 75.0,
+    "total_price": "150.00"
+  },
+  "errors": null
+}
+```
+
+### `POST /cards/{id}/compare-store/`
+- **Description**: Cross-Store Shopping Memo Comparison. Compares all items in the customer's current memo against a target store's catalog. Matches items via Barcode -> SKU -> Case-insensitive name. Reports detailed price differences, potential savings at target store, missing unfulfillable products, and overall feasibility (`can_fulfill_all`).
+- **Permissions**: `IsAuthenticated` (Customer owns memo).
+- **Request Body**:
+```json
+{
+  "target_store_id": 2
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Store comparison completed.",
+  "data": {
+    "source_store_id": 1,
+    "source_store_name": "Apex Supermarket",
+    "target_store_id": 2,
+    "target_store_name": "Metro Mega Store",
+    "can_fulfill_all": true,
+    "total_items_in_memo": 2,
+    "matched_items_count": 2,
+    "missing_items_count": 0,
+    "source_total_price": "85.00",
+    "target_total_price": "75.00",
+    "potential_savings_at_target": "10.00",
+    "items": [
+      {
+        "source_item_id": 9,
+        "source_product_id": 14,
+        "source_product_name": "Full Cream Milk 1L",
+        "quantity": "2.000",
+        "source_unit_price": "25.00",
+        "source_line_total": "50.00",
+        "status": "available",
+        "target_product_id": 31,
+        "target_product_name": "Full Cream Milk 1L",
+        "target_unit_price": "20.00",
+        "target_line_total": "40.00",
+        "price_difference": "-10.00",
+        "match_type": "barcode"
+      }
+    ],
+    "missing_items": []
+  },
+  "errors": null
+}
+```
+
+### `POST /cards/{id}/transfer-store/`
+- **Description**: Store Memo Transfer. Transfers the customer's shopping memo items from the source store to a target store's catalog. Automatically matches products (Barcode -> SKU -> Name), re-prices items at target store prices, updates `card.store` and `card.vendor`, and disconnects store-specific coupons.
+- **Permissions**: `IsAuthenticated` (Customer owns memo).
+- **Request Body**:
+```json
+{
+  "target_store_id": 2,
+  "omit_missing": true,
+  "clone": false
+}
+```
+- **Response** (`200 OK` or `201 Created` if `clone=true`):
+```json
+{
+  "success": true,
+  "message": "Memo transferred to Metro Mega Store.",
+  "data": {
+    "id": 5,
+    "store": 2,
+    "vendor": 4,
+    "shopping_mode": "walk_in",
+    "total_price": "75.00",
+    "items": [...]
+  },
+  "errors": null
+}
+```
+
 ---
 
 ## 8. Orders & Fulfillment APIs

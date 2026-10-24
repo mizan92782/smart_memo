@@ -53,6 +53,7 @@ class Card(BaseModel):
     is_completed = models.BooleanField(default=False)
     is_saved_for_later = models.BooleanField(default=False)
     planned_visit_date = models.DateField(null=True, blank=True)
+    budget_limit = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']
@@ -127,6 +128,24 @@ class Card(BaseModel):
         if total == 0:
             return 0.0
         return round((self.picked_items_count / total) * 100.0, 1)
+
+    @property
+    def budget_remaining(self):
+        if self.budget_limit is None:
+            return None
+        return self.budget_limit - self.estimated_total
+
+    @property
+    def is_over_budget(self) -> bool:
+        if self.budget_limit is None:
+            return False
+        return self.estimated_total > self.budget_limit
+
+    @property
+    def budget_used_percent(self):
+        if not self.budget_limit or self.budget_limit <= Decimal('0.00'):
+            return None
+        return round(float((self.estimated_total / self.budget_limit) * Decimal('100.0')), 1)
 
 
 class CardItem(BaseModel):

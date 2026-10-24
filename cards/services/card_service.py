@@ -3,6 +3,8 @@ from django.db import transaction
 from django.utils import timezone
 from cards.models.card_mod import Card, CardItem
 from cards.repositories.card_repository import CardRepository
+from products.models.product_mod import Product
+from stores.models.store_mod import Store
 from products.repositories.product_repository import ProductRepository
 
 
@@ -313,5 +315,224 @@ class CardService:
         if sort_by == 'aisle':
             return qs.order_by('product__aisle', 'product__shelf_location', 'id')
         return qs.order_by('id')
+
+    @staticmethod
+    def set_budget_limit(card: Card, budget_limit, actor=None) -> Card:
+        """Set or update the spending ceiling/budget limit for a shopping memo."""
+        if card.is_completed:
+            raise ValueError("Cannot set budget on a completed shopping memo.")
+        if actor and card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify your own shopping memo.")
+
+        if budget_limit is not None and str(budget_limit).strip() != "":
+            try:
+                dec_limit = Decimal(str(budget_limit))
+                if dec_limit < Decimal('0.00'):
+                    raise ValueError("Budget limit must be greater than or equal to 0.")
+                card.budget_limit = dec_limit
+            except Exception as e:
+                if isinstance(e, ValueError):
+                    raise
+                raise ValueError("Invalid budget limit amount.")
+        else:
+            card.budget_limit = None
+
+        card.save(update_fields=['budget_limit', 'updated_at'])
+        return card
+
+    @staticmethod
+    def compare_with_store(card: Card, target_store_id: int, actor=None) -> dict:
+        """
+        Compare products, pricing, and stock availability between the current memo's store
+        and a target vendor store.
+        """
+        if actor and card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only compare your own shopping memo.")
+
+        target_store = Store.objects.filter(id=target_store_id, is_deleted=False).first()
+        if not target_store:
+            raise ValueError("Target store not found.")
+        if not target_store.is_active:
+            raise ValueError("Target store is not currently active.")
+        if card.store_id == target_store.id:
+            raise ValueError("Target store must be different from current store.")
+
+        matched_items = []
+        missing_items = []
+        source_matched_total = Decimal('0.00')
+        target_matched_total = Decimal('0.00')
+
+        source_items = list(card.items.select_related('product', 'product__store'))
+
+        for item in source_items:
+            source_prod = item.product
+            # Look up product in target store by barcode, then SKU, then Name
+            target_prod = None
+            if source_prod.barcode:
+                target_prod = Product.objects.filter(
+                    store=target_store,
+                    barcode=source_prod.barcode,
+                    is_deleted=False,
+                    is_active=True
+                ).first()
+
+            if not target_prod and source_prod.sku:
+                target_prod = Product.objects.filter(
+                    store=target_store,
+                    sku=source_prod.sku,
+                    is_deleted=False,
+                    is_active=True
+                ).first()
+
+            if not target_prod:
+                target_prod = Product.objects.filter(
+                    store=target_store,
+                    name__iexact=source_prod.name,
+                    is_deleted=False,
+                    is_active=True
+                ).first()
+
+            if target_prod:
+                source_line_total = item.subtotal
+                target_unit_price = target_prod.effective_price
+                target_line_total = (item.quantity * target_unit_price).quantize(Decimal('0.01'))
+                has_stock = (target_prod.stock >= item.quantity)
+                line_diff = (target_line_total - source_line_total).quantize(Decimal('0.01'))
+
+                matched_items.append({
+                    'source_item_id': item.id,
+                    'source_product_id': source_prod.id,
+                    'target_product_id': target_prod.id,
+                    'product_name': source_prod.name,
+                    'barcode': source_prod.barcode,
+                    'sku': source_prod.sku,
+                    'quantity': str(item.quantity),
+                    'source_unit_price': str(item.unit_price),
+                    'source_line_total': str(source_line_total),
+                    'target_unit_price': str(target_unit_price),
+                    'target_line_total': str(target_line_total),
+                    'price_difference': str(line_diff),
+                    'has_stock': has_stock,
+                    'available_stock': str(target_prod.stock),
+                    'target_product': target_prod
+                })
+                source_matched_total += source_line_total
+                target_matched_total += target_line_total
+            else:
+                missing_items.append({
+                    'source_item_id': item.id,
+                    'source_product_id': source_prod.id,
+                    'product_name': source_prod.name,
+                    'barcode': source_prod.barcode,
+                    'sku': source_prod.sku,
+                    'quantity': str(item.quantity),
+                    'source_unit_price': str(item.unit_price),
+                    'source_line_total': str(item.subtotal),
+                    'reason': 'Not carried by target store'
+                })
+
+        savings = (source_matched_total - target_matched_total).quantize(Decimal('0.01'))
+        can_fully_fulfill = (len(missing_items) == 0 and all(m['has_stock'] for m in matched_items))
+
+        # Filter out model instance from dict before serialization
+        clean_matched = []
+        for m in matched_items:
+            entry = dict(m)
+            entry.pop('target_product', None)
+            clean_matched.append(entry)
+
+        return {
+            'source_store': {
+                'id': card.store.id if card.store else None,
+                'name': card.store.name if card.store else "Unassigned",
+            },
+            'target_store': {
+                'id': target_store.id,
+                'name': target_store.name,
+            },
+            'total_items_in_memo': len(source_items),
+            'matched_items_count': len(matched_items),
+            'missing_items_count': len(missing_items),
+            'source_matched_total': str(source_matched_total),
+            'target_matched_total': str(target_matched_total),
+            'savings_at_target': str(savings),
+            'is_target_cheaper': savings > Decimal('0.00'),
+            'can_fully_fulfill': can_fully_fulfill,
+            'matched_items': clean_matched,
+            'missing_items': missing_items,
+            '_internal_matched_items': matched_items
+        }
+
+    @staticmethod
+    @transaction.atomic
+    def transfer_to_store(card: Card, target_store_id: int, actor=None, clone: bool = False, omit_missing: bool = True) -> Card:
+        """
+        Transfer or clone a shopping memo to another vendor's store, re-binding items to the
+        target store's catalog products and local prices.
+        """
+        if card.is_completed:
+            raise ValueError("Cannot transfer a completed shopping memo.")
+        if actor and card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only transfer your own shopping memo.")
+
+        target_store = Store.objects.filter(id=target_store_id, is_deleted=False).first()
+        if not target_store:
+            raise ValueError("Target store not found.")
+        if not target_store.is_active:
+            raise ValueError("Target store is not currently active.")
+        if card.store_id == target_store.id:
+            raise ValueError("Target store must be different from current store.")
+
+        comparison = CardService.compare_with_store(card, target_store_id, actor=actor)
+        internal_matched = comparison['_internal_matched_items']
+
+        if not internal_matched:
+            raise ValueError(f"Cannot transfer memo: '{target_store.name}' does not carry any of the items from this memo.")
+
+        if not omit_missing and comparison['missing_items_count'] > 0:
+            raise ValueError(f"Target store does not carry {comparison['missing_items_count']} item(s) from your memo.")
+
+        if clone:
+            new_title = f"{card.title} ({target_store.name})"
+            dest_card = Card.objects.create(
+                user=card.user,
+                store=target_store,
+                vendor=target_store.vendor,
+                title=new_title,
+                shopping_mode=card.shopping_mode,
+                notes=card.notes,
+                budget_limit=card.budget_limit,
+                is_saved_for_later=card.is_saved_for_later,
+                planned_visit_date=card.planned_visit_date
+            )
+            for m in internal_matched:
+                CardItem.objects.create(
+                    card=dest_card,
+                    product=m['target_product'],
+                    quantity=Decimal(m['quantity']),
+                    unit_price=Decimal(m['target_unit_price']),
+                    is_picked=False
+                )
+            return dest_card
+        else:
+            card.store = target_store
+            card.vendor = target_store.vendor
+            card.coupon = None  # Reset store coupon bound to prior store
+            card.save(update_fields=['store', 'vendor', 'coupon', 'updated_at'])
+
+            matched_source_ids = {m['source_item_id'] for m in internal_matched}
+            card.items.exclude(id__in=matched_source_ids).delete()
+
+            for m in internal_matched:
+                card.items.filter(id=m['source_item_id']).update(
+                    product=m['target_product'],
+                    unit_price=Decimal(m['target_unit_price']),
+                    is_picked=False,
+                    picked_at=None,
+                    updated_at=timezone.now()
+                )
+
+            card.refresh_from_db()
+            return card
 
 

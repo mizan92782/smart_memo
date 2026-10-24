@@ -63,4 +63,18 @@ A draft memo is an editable shopping list. A submitted order is a customer's req
   - `POST /cards/{id}/toggle-item-picked/`: toggles individual item picked status and returns real-time progress metrics (`total_items_count`, `picked_items_count`, `is_fully_picked`, `picking_progress_percent`).
   - `POST /cards/{id}/batch-pick/`: updates multiple items in a single atomic operation.
   - `GET /cards/{id}/?sort_by=aisle` / `GET /cards/active/?store_id=<id>&sort_by=aisle`: sequences products by physical store layout (`product__aisle`, `product__shelf_location`) for non-backtracking walk-through routes.
+- **Shopping Budget Limits & Over-Budget Alerts**:
+  - `Card.budget_limit`: optional ceiling (`DecimalField`) allowing customers to set financial bounds per store shopping trip.
+  - Dynamic budget properties: `budget_remaining` (`budget_limit - total_price`), `is_over_budget` (`total_price > budget_limit`), and `budget_used_percent` (`(total_price / budget_limit) * 100`).
+  - `PATCH /cards/{id}/set-budget/`: updates or clears (`budget_limit: null`) the budget ceiling for the memo.
+- **Cross-Store Memo Comparison (`compare-store`)**:
+  - `POST /cards/{id}/compare-store/`: compares current memo items against a target store's catalog.
+  - Product resolution sequence across distinct stores: **Barcode** (exact GTIN/UPC) -> **SKU** (vendor stock code) -> **Case-Insensitive Product Name** (`name__iexact`).
+  - Reports detailed item-by-item price differences, total source vs target price, potential savings at target, missing products, and fulfillment feasibility (`can_fulfill_all`).
+- **Store Memo Transfer (`transfer-store`)**:
+  - `POST /cards/{id}/transfer-store/`: shifts shopping memo from source store to target store catalog.
+  - Matches products across catalogs; re-prices items at target store prices; updates `card.store` and `card.vendor`.
+  - Disconnects store-specific promotional coupons (`card.coupon = None`) to prevent cross-tenant coupon leakages.
+  - Supports `omit_missing=True` (drops unmatched products from target memo) or `omit_missing=False` (aborts if any product is unfulfillable at target store).
+  - Supports `clone=True` (creates a new transferred memo leaving original untouched) or in-place transfer (`clone=False`).
 
