@@ -70,6 +70,17 @@ class UserService:
             raise ValidationError("Current password is incorrect.")
         UserRepository.set_password(user, new_password)
         new_token = UserRepository.rotate_token(user)
+
+        from audit.services.audit_service import AuditService
+        from audit.models.audit_mod import AuditAction
+        AuditService.log(
+            action=AuditAction.PASSWORD_CHANGED,
+            target_model="User",
+            target_id=str(user.id),
+            actor=user,
+            details={"email": user.email}
+        )
+
         return True, new_token.key
 
     @staticmethod

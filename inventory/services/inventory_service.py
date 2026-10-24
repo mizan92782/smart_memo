@@ -199,5 +199,23 @@ class InventoryService:
         from notifications.services.notification_service import NotificationService
         NotificationService.notify_low_stock_if_needed(store, product, balance)
 
+        from audit.services.audit_service import AuditService
+        from audit.models.audit_mod import AuditAction
+        AuditService.log(
+            action=AuditAction.INVENTORY_ADJUSTED,
+            target_model="StockBalance",
+            target_id=str(balance.id),
+            actor=actor,
+            store=store,
+            details={
+                "product_id": str(product.id),
+                "adjustment_qty": str(qty),
+                "previous_on_hand": str(new_on_hand - qty),
+                "new_on_hand": str(new_on_hand),
+                "movement_type": movement_type,
+                "notes": notes
+            }
+        )
+
         return balance
 

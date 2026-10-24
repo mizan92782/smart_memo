@@ -816,6 +816,65 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 }
 ```
 
+---
 
+## 14. Audit Logging & Activity Trail APIs
 
+### `GET /audit/logs/`
+- **Description**: Read-only listing of tenant-isolated immutable audit logs.
+  - Staff / Admin: Views platform-wide audit entries or filters by `store_id`.
+  - Vendor: Automatically filtered strictly to audit entries for vendor-owned stores.
+  - Customer / Anonymous: Access denied (`403 Forbidden` / `401 Unauthorized`).
+- **Permissions**: `IsAuthenticated` (with role checks).
+- **Query Parameters**:
+  - `action`: Filter by action identifier (`STORE_VERIFIED`, `STORE_SUSPENDED`, `STORE_ACTIVATED`, `INVENTORY_ADJUSTED`, `ORDER_CANCELLED`, `ORDER_PAYMENT_COLLECTED`, `PASSWORD_CHANGED`).
+  - `target_model`: Filter by model name (`Store`, `StockBalance`, `Order`, `User`).
+  - `target_id`: Filter by model record ID.
+  - `store_id`: Filter by specific store ID (validated against vendor ownership).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Data retrieved successfully",
+  "data": [
+    {
+      "id": 104,
+      "store": 1,
+      "store_name": "Fresh Mart",
+      "actor": 5,
+      "actor_email": "vendor@example.com",
+      "actor_role": "vendor",
+      "action": "INVENTORY_ADJUSTED",
+      "target_model": "StockBalance",
+      "target_id": "42",
+      "ip_address": "127.0.0.1",
+      "user_agent": "Mozilla/5.0",
+      "details": {
+        "product_id": "15",
+        "adjustment_qty": "10.000",
+        "previous_on_hand": "40.000",
+        "new_on_hand": "50.000",
+        "movement_type": "manual_adjustment",
+        "notes": "Physical inventory recount found extra stock"
+      },
+      "created_at": "2026-10-24T09:01:00Z"
+    }
+  ],
+  "pagination": {
+    "count": 1,
+    "total_pages": 1,
+    "current_page": 1,
+    "page_size": 10,
+    "next": null,
+    "previous": null,
+    "has_next": false,
+    "has_previous": false
+  },
+  "errors": null
+}
+```
 
+### `GET /audit/logs/{id}/`
+- **Description**: Detailed retrieval of a single audit log entry.
+- **Permissions**: `IsAuthenticated` (enforces vendor store ownership or staff role).
+- **Security**: Direct mutations (`POST`, `PUT`, `PATCH`, `DELETE`) are strictly rejected with `405 Method Not Allowed`. Audit log models disallow updates and deletions at ORM level (`PermissionDenied`).

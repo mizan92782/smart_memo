@@ -104,27 +104,57 @@ class StoreService:
     def verify_store(store: Store, verified_by=None, notes: str = "") -> Store:
         """Approve and verify a store for platform visibility and orders."""
         from shared.caching.cache_service import CacheService
+        from audit.services.audit_service import AuditService
+        from audit.models.audit_mod import AuditAction
         updated = StoreRepository.verify_store(store, verified_by=verified_by, notes=notes)
         CacheService.invalidate_store_profile(store.id)
         CacheService.invalidate_catalog(store.id)
+        AuditService.log(
+            action=AuditAction.STORE_VERIFIED,
+            target_model="Store",
+            target_id=store.id,
+            actor=verified_by,
+            store=store,
+            details={"notes": notes}
+        )
         return updated
 
     @staticmethod
-    def suspend_store(store: Store, reason: str = "") -> Store:
+    def suspend_store(store: Store, reason: str = "", actor=None) -> Store:
         """Administrative suspension of a store."""
         from shared.caching.cache_service import CacheService
+        from audit.services.audit_service import AuditService
+        from audit.models.audit_mod import AuditAction
         updated = StoreRepository.suspend_store(store, reason=reason)
         CacheService.invalidate_store_profile(store.id)
         CacheService.invalidate_catalog(store.id)
+        AuditService.log(
+            action=AuditAction.STORE_SUSPENDED,
+            target_model="Store",
+            target_id=store.id,
+            actor=actor,
+            store=store,
+            details={"reason": reason}
+        )
         return updated
 
     @staticmethod
-    def activate_store(store: Store) -> Store:
+    def activate_store(store: Store, actor=None) -> Store:
         """Administrative reactivation of a suspended store."""
         from shared.caching.cache_service import CacheService
+        from audit.services.audit_service import AuditService
+        from audit.models.audit_mod import AuditAction
         updated = StoreRepository.activate_store(store)
         CacheService.invalidate_store_profile(store.id)
         CacheService.invalidate_catalog(store.id)
+        AuditService.log(
+            action=AuditAction.STORE_ACTIVATED,
+            target_model="Store",
+            target_id=store.id,
+            actor=actor,
+            store=store,
+            details={}
+        )
         return updated
 
     @staticmethod

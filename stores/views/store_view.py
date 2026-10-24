@@ -241,7 +241,7 @@ class StoreViewSet(viewsets.ModelViewSet):
         if not store:
             return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
         reason = request.data.get('reason', '')
-        suspended_store = StoreService.suspend_store(store, reason=reason)
+        suspended_store = StoreService.suspend_store(store, reason=reason, actor=request.user)
         return custome_success_response(
             message="Store suspended successfully.",
             data=StoreSerializer(suspended_store).data,
@@ -254,7 +254,7 @@ class StoreViewSet(viewsets.ModelViewSet):
         store = StoreRepository.get_by_id(pk)
         if not store:
             return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
-        activated_store = StoreService.activate_store(store)
+        activated_store = StoreService.activate_store(store, actor=request.user)
         return custome_success_response(
             message="Store reactivated successfully.",
             data=StoreSerializer(activated_store).data,

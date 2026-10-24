@@ -5,10 +5,11 @@ This document is the living single source of truth for feature development statu
 ---
 
 ## 📌 Last Working Feature
-- **Feature Name**: Full Multi-Tenant SaaS Platform (Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
-- **Status**: 🟢 **Completed & Verified (125 Tests Passing)**
+- **Feature Name**: Full Multi-Tenant SaaS Platform (Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
+- **Status**: 🟢 **Completed & Verified (138 Tests Passing)**
 - **Last Verified Working**: 2026-10-24
 - **Current State**:
+  - `audit` (Audit Logging & Activity Trail): Immutable append-only audit ledger (`AuditLog`) recording all critical state mutations (store verification/suspension/reactivation, inventory adjustments, order cancellations, COD payment collections, password changes) with actor snapshot, IP address, user-agent, and structured JSON diffs. Enforces model-level immutability (`.save()` updates and `.delete()` blocked), `ReadOnlyModelViewSet` (POST/PUT/DELETE blocked with 405), and strict tenant isolation (vendors limited to their stores, staff/admin see platform-wide, customers blocked). Passing 13/13 tests.
   - `stores` (Platform Administration & Governance): Administrative store verification (`is_verified`, `verified_at`, `verification_notes`), store suspension (`POST /stores/{id}/suspend/`), reactivation (`POST /stores/{id}/activate/`), platform-wide metrics overview (`GET /stores/governance-overview/`), exclusion of unverified/inactive stores from public discovery and checkout orders, role governance enforced with `IsStaffOrAdmin`. Passing 16/16 tests.
   - `users` (Authentication Lifecycle & Profile Management): DRF Token authentication (`rest_framework.authtoken`), login (`POST /users/login/`) delivering tokens and user roles, logout (`POST /users/logout/`) revoking tokens and sessions, password changes (`POST /users/change-password/`) verifying current hash, rotating tokens, and profile retrieval and updates (`GET / PATCH /users/profile/`) strictly isolated per actor. Passing 24/24 tests.
   - `orders` (Fulfillment Pipeline): Complete 5-stage order fulfillment state machine (`SUBMITTED -> ACCEPTED -> PREPARING -> READY_FOR_PICKUP / OUT_FOR_DELIVERY -> COMPLETED`) with transition timestamps (`accepted_at`, `preparing_at`, `dispatched_at`, `completed_at`), actor-based cancellation policy (customers blocked from cancelling once prep has started), automated customer lifecycle alerts, and clean non-colliding action routing. Passing 9/9 tests.
@@ -48,8 +49,9 @@ This document is the living single source of truth for feature development statu
 | **15** | **Draft Memo Management & Isolation** | Memo item CRUD (`active`, `add_item`, `update_item`, `remove_item`, `clear`), empty store reset, catalog price revalidation at checkout | 🟢 Completed | 🟢 5 Passing | 🟢 5 Passing | 🟢 Enforced |
 | **16** | **Authentication Lifecycle & Profiles** | DRF Token auth, `login`, `logout`, `change-password` with token rotation, isolated `profile` GET/PATCH | 🟢 Completed | 🟢 13 Passing | 🟢 8 Passing | 🟢 Enforced |
 | **17** | **Platform Admin & Store Governance** | Store verification (`verify`, `suspend`, `activate`), unverified checkout/discovery guard, platform overview metrics | 🟢 Completed | 🟢 12 Passing | 🟢 12 Passing | 🟢 Enforced |
+| **18** | **Audit Logging & Activity Trail** | Immutable append-only audit trail (`AuditLog`), automated logging on store governance, inventory adjustments, orders & security events, tenant-scoped read-only API | 🟢 Completed | 🟢 13 Passing | 🟢 13 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 125 / 125 (100% Passing)*
+*Total Active Automated Tests Passing: 138 / 138 (100% Passing)*
 
 ---
 

@@ -17,10 +17,13 @@ Implementing any authenticated endpoint, store-scoped data, vendor/customer acce
 - Use least privilege and explicit role/permission checks.
 - Validate uploads, rate-limit sensitive endpoints, protect secrets, and avoid logging tokens or sensitive personal data.
 - Use safe errors that do not disclose another tenant's records.
+- Immutable audit trails: record all critical business, inventory, security, and administrative events in an append-only audit ledger (`AuditLog`) that strictly blocks updates and deletions; restrict audit log visibility strictly by tenant ownership (staff/admin sees platform, vendors see only their stores, customers are blocked).
 
 ## Tests
-- Vendor A cannot read or mutate Vendor B's store, product, purchase, inventory or order-management data.
+- Vendor A cannot read or mutate Vendor B's store, product, purchase, inventory, order-management, or audit log data.
 - Customer A cannot read Customer B's private order or address.
+- Customers cannot access internal audit trails (403 Forbidden).
+- Audit log entries cannot be modified or deleted via API or ORM save/delete.
 - Changing an object ID in a request does not bypass authorization.
 - Background tasks and exports enforce the same tenant boundaries.
 - Unauthenticated and insufficiently authorized requests fail safely.

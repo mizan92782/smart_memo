@@ -284,6 +284,21 @@ class OrderService:
         from notifications.services.notification_service import NotificationService
         NotificationService.notify_order_status_change(order, order.status)
 
+        from audit.services.audit_service import AuditService
+        from audit.models.audit_mod import AuditAction
+        AuditService.log(
+            action=AuditAction.ORDER_CANCELLED,
+            target_model="Order",
+            target_id=str(order.id),
+            actor=actor,
+            store=order.store,
+            details={
+                "order_number": order.order_number,
+                "reason": reason,
+                "new_status": order.status
+            }
+        )
+
         return order
 
     @staticmethod
@@ -304,6 +319,20 @@ class OrderService:
         if hasattr(order, 'sales_memo'):
             order.sales_memo.amount_paid = order.total_amount
             order.sales_memo.save(update_fields=['amount_paid', 'updated_at'])
+
+        from audit.services.audit_service import AuditService
+        from audit.models.audit_mod import AuditAction
+        AuditService.log(
+            action=AuditAction.ORDER_PAYMENT_COLLECTED,
+            target_model="Order",
+            target_id=str(order.id),
+            actor=collector,
+            store=order.store,
+            details={
+                "order_number": order.order_number,
+                "amount": str(order.total_amount),
+            }
+        )
 
         return order
 
