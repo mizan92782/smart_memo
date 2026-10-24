@@ -532,4 +532,37 @@ class OrderService:
         """
         return OrderRepository.get_customer_spending_summary(customer.id)
 
+    @staticmethod
+    def reorder_to_card(order: Order, customer) -> Card:
+        """
+        One-tap reorder: clones items from a past completed order into an active draft shopping memo.
+        Revalidates current active status of products and loads current authoritative prices.
+        """
+        if order.customer != customer and not getattr(customer, 'is_superuser', False):
+            raise PermissionError("You can only reorder from your own past orders.")
+
+        from cards.services.card_service import CardService
+        from cards.repositories.card_repository import CardRepository
+
+        card = CardService.get_or_create_active_memo(
+            user=customer,
+            store=order.store,
+            shopping_mode=order.fulfillment_type if order.fulfillment_type == FulfillmentType.WALK_IN else 'remote'
+        )
+
+        added_count = 0
+        for item in order.items.select_related('product').all():
+            if item.product and not item.product.is_deleted and item.product.is_active:
+                CardRepository.add_item_to_card(
+                    card=card,
+                    product=item.product,
+                    quantity=item.quantity
+                )
+                added_count += 1
+
+        if added_count == 0:
+            raise ValueError("None of the products from this order are currently active in the store catalog.")
+
+        return card
+
 

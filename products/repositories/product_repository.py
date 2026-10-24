@@ -38,9 +38,24 @@ class ProductRepository:
                 Q(name__icontains=query) |
                 Q(second_name__icontains=query) |
                 Q(sku__icontains=query) |
+                Q(barcode__icontains=query) |
                 Q(tags__contains=[query])
             )
         return qs.order_by('name')
+
+    @staticmethod
+    def get_by_barcode_or_sku(store_id: int, code: str) -> Optional[Product]:
+        """Fetch active store product by exact barcode or SKU."""
+        if not code or not str(code).strip():
+            return None
+        c = str(code).strip()
+        return Product.objects.filter(
+            store_id=store_id,
+            is_deleted=False,
+            is_active=True
+        ).filter(
+            Q(barcode__iexact=c) | Q(sku__iexact=c)
+        ).select_related('category', 'store').first()
 
     @staticmethod
     def create_product(**kwargs) -> Product:

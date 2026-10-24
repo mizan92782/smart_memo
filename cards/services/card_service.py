@@ -53,6 +53,33 @@ class CardService:
         return CardRepository.add_item_to_card(card=card, product=product, quantity=qty)
 
     @staticmethod
+    def scan_add_product(card_id: int, code: str, quantity: Decimal = Decimal('1'), actor=None) -> CardItem:
+        """
+        In-store shelf scanning: lookup product by barcode or SKU and add to draft memo.
+        Enforces store scoping: if card is bound to a store, only products of that store are matched.
+        """
+        card = CardRepository.get_by_id(card_id)
+        if not card:
+            raise ValueError("Card not found.")
+
+        if not card.store_id:
+            raise ValueError("Draft shopping memo must be bound to a store to scan in-store shelf barcodes.")
+
+        if not code or not str(code).strip():
+            raise ValueError("Barcode or SKU code is required.")
+
+        product = ProductRepository.get_by_barcode_or_sku(card.store_id, str(code).strip())
+        if not product:
+            raise ValueError(f"No product with barcode or SKU '{code}' found in {card.store.name}.")
+
+        return CardService.add_product_to_card(
+            card_id=card.id,
+            product_id=product.id,
+            quantity=quantity,
+            actor=actor
+        )
+
+    @staticmethod
     def update_item_quantity(card_id: int, item_id: int, quantity: Decimal, actor) -> CardItem:
         """Update the quantity of an item within the draft shopping memo."""
         card = CardRepository.get_by_id(card_id)

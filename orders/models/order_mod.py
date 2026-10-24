@@ -142,6 +142,22 @@ class Order(BaseModel):
             kwargs['update_fields'] = update_fields
         super().save(*args, **kwargs)
 
+    def generate_qr_code_svg(self) -> str:
+        """
+        Generates a vector SVG QR code representation of the order verification code.
+        Encodes the 6-digit walk_in_code (or order_number).
+        """
+        import io
+        import qrcode
+        import qrcode.image.svg
+
+        data_to_encode = self.walk_in_code or self.order_number
+        factory = qrcode.image.svg.SvgImage
+        img = qrcode.make(data_to_encode, image_factory=factory, box_size=10, border=2)
+        stream = io.BytesIO()
+        img.save(stream)
+        return stream.getvalue().decode('utf-8')
+
     def __str__(self):
         return f"{self.order_number} ({self.store.name} - {self.status})"
 

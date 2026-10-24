@@ -5,7 +5,7 @@ Senior Pattern: Services encapsulate domain logic using static methods.
 Views and APIs delegate business logic here.
 """
 from decimal import Decimal
-from typing import List
+from typing import List, Optional
 from products.models.product_mod import Product
 from products.repositories.product_repository import ProductRepository
 
@@ -46,3 +46,12 @@ class ProductService:
         product.offered_price = ProductService.calculate_offered_price(product.price, discount_percent)
         product.save()
         return product
+
+    @staticmethod
+    def lookup_by_barcode(store_id: int, code: str) -> Optional[Product]:
+        """Lookup active store product by barcode or SKU for shelf scanning."""
+        if not store_id:
+            raise ValueError("store_id is required for barcode lookup.")
+        if not code or not str(code).strip():
+            raise ValueError("Barcode or SKU code is required.")
+        return ProductRepository.get_by_barcode_or_sku(store_id, code)

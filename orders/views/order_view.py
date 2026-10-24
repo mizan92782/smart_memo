@@ -301,3 +301,29 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             data=stats
         )
 
+    @action(detail=True, methods=['get'], url_path='qr-code')
+    def qr_code(self, request, pk=None):
+        """Retrieve vector SVG QR code for in-store walk-in verification and counter POS scanning."""
+        order = self.get_object()
+        from django.http import HttpResponse
+        svg = order.generate_qr_code_svg()
+        return HttpResponse(svg, content_type='image/svg+xml')
+
+    @action(detail=True, methods=['post'], url_path='reorder')
+    def reorder(self, request, pk=None):
+        """One-tap reorder: clones items from a past order into an active draft shopping memo."""
+        order = self.get_object()
+        if order.customer != request.user and not request.user.is_superuser:
+            return custome_error_response("You can only reorder your own past orders.", status_code=status.HTTP_403_FORBIDDEN)
+
+        try:
+            from cards.serializers.card_ser import CardSerializer
+            card = OrderService.reorder_to_card(order=order, customer=request.user)
+            return custome_success_response(
+                message=f"Shopping memo for '{order.store.name}' populated from order {order.order_number}.",
+                data=CardSerializer(card).data,
+                status_code=status.HTTP_201_CREATED
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+

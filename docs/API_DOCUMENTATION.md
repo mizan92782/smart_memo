@@ -421,8 +421,34 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 - **Query Parameters**:
   - `store_id` (int, optional)
   - `category_id` (int, optional)
-  - `search` (string, optional): Searches name, second_name, tags
+  - `search` (string, optional): Searches name, second_name, tags, barcode, SKU
   - `page`, `page_size`
+
+### `GET /products/api/barcode-lookup/`
+- **Description**: Fast in-store shelf barcode scanning lookup. Resolves exact manufacturer EAN/UPC barcode or SKU within a specific store context with strict tenant isolation.
+- **Permissions**: AllowAny (Public / In-store Walk-in Shoppers).
+- **Query Parameters**:
+  - `store_id` (int, required): Store being shopped.
+  - `code` (string, required): Barcode string (e.g. `8901030383719`) or SKU code.
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Product found.",
+  "data": {
+    "id": 14,
+    "name": "Crunchy Almond Cereal 500g",
+    "second_name": "Almond Flakes",
+    "barcode": "8901030383719",
+    "sku": "SKU-ALMOND-500",
+    "price": "60.00",
+    "offered_price": "60.00",
+    "is_in_stock": true,
+    "available_quantity": "50.000"
+  },
+  "errors": null
+}
+```
 
 ---
 
@@ -479,6 +505,43 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 {
   "product_id": 12,
   "quantity": "2.5"
+}
+```
+
+### `POST /cards/{id}/scan-add/`
+- **Description**: Physical In-Store Barcode Scanner integration. Enables a customer walking inside a store to scan a product barcode or SKU off the shelf; automatically resolves the product in the store, validates stock, and either adds a new line item or increments quantity by specified amount (default `1.000`).
+- **Permissions**: `IsAuthenticated` (Memo owner only).
+- **Request Body**:
+```json
+{
+  "code": "8901030383719",
+  "quantity": "1.000"
+}
+```
+- **Response** (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Scanned 'Crunchy Almond Cereal 500g' added to your shopping memo.",
+  "data": {
+    "id": 5,
+    "store": 1,
+    "user": 2,
+    "shopping_mode": "walk_in",
+    "total_price": "60.00",
+    "items": [
+      {
+        "id": 9,
+        "product": 14,
+        "product_name": "Crunchy Almond Cereal 500g",
+        "barcode": "8901030383719",
+        "quantity": "1.000",
+        "price": "60.00",
+        "total": "60.00"
+      }
+    ]
+  },
+  "errors": null
 }
 ```
 
@@ -682,6 +745,44 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
         "memo_count": 1,
         "total_spent": "240.00",
         "last_visit": "2026-10-24T19:00:00Z"
+      }
+    ]
+  },
+  "errors": null
+### `GET /orders/{id}/qr-code/`
+- **Description**: Generates and serves a vector SVG QR code representation of the order verification data (`walk_in_code`, `order_number`, `store_id`). Enables physical in-store walk-in customers to display an interactive SVG QR code on their smartphone screen for 1-second optical scanning by the counter POS barcode scanner or mobile cashier camera.
+- **Permissions**: `IsAuthenticated` (Order owner or Store vendor only).
+- **Response** (`200 OK`, `Content-Type: image/svg+xml`):
+```xml
+<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 37 37">
+  ...
+</svg>
+```
+*Note: The standalone Base64/UTF-8 data URI is also exposed automatically on every order detail via the `qr_code_data_uri` field in `OrderSerializer` (`data:image/svg+xml;utf8,<svg...`).*
+
+### `POST /orders/{id}/reorder/`
+- **Description**: Quick 1-Tap Reorder. Clones all items from a past completed/delivered order directly into a new active draft shopping memo for that same store. Automatically re-validates current product availability, verifies the store is still active, recalculates authoritative current pricing, and populates the memo items.
+- **Permissions**: `IsAuthenticated` (Customer who owns the past order).
+- **Response** (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Shopping memo for 'Green Valley Grocery' populated from order ORD-B4F238.",
+  "data": {
+    "id": 14,
+    "user": 5,
+    "store": 1,
+    "shopping_mode": "online",
+    "status": "draft",
+    "total_price": "240.00",
+    "items": [
+      {
+        "id": 22,
+        "product": 8,
+        "product_name": "Organic Honey 500g",
+        "quantity": "2.000",
+        "price": "120.00",
+        "total": "240.00"
       }
     ]
   },

@@ -207,7 +207,15 @@ This document is the living single source of truth for feature development statu
   - Implemented `GET /orders/sales-memos/` digital receipt wallet with store ID, date range, search filters, pagination, and dual customer/vendor tenancy.
   - Implemented `GET /orders/customer-spending/` multi-store spending analytics computing `total_spent`, `total_saved`, `total_memos`, and `store_breakdown` using pure SQL database aggregations.
   - Added `test_sales_memos_and_spending.py` (7/7 passing).
-- Executed full test suite across entire SaaS platform: **224 / 224 tests passing (100% pass rate)**.
+- Implemented **Phase 30: In-Store Shelf Barcode Scanning, Walk-In Order QR Codes & Quick Memo Reordering**:
+  - Added `barcode` field (`CharField(max_length=100, db_index=True)`) to `Product` model, serializer, and migration `products.0014_product_barcode_alter_product_sku`.
+  - Added `ProductRepository.get_by_barcode_or_sku()` and `ProductService.lookup_by_barcode()` with store isolation.
+  - Added public in-store shelf barcode lookup endpoint: `GET /products/api/barcode-lookup/?store_id=<id>&code=<code>`.
+  - Integrated in-store physical shelf barcode scanner in customer draft shopping memos: `POST /cards/{id}/scan-add/` allowing customers to scan physical barcodes off store shelves to automatically add or increment line items in their draft memo.
+  - Implemented standalone vector SVG QR code generation for walk-in verification: `Order.generate_qr_code_svg()`, `GET /orders/{id}/qr-code/`, and embedded data URI `qr_code_data_uri` in `OrderSerializer` for instant optical scanning at counter POS.
+  - Implemented 1-tap quick reorder endpoint `POST /orders/{id}/reorder/` cloning past order items into an active draft shopping memo with live product availability, store status, and pricing re-validation.
+  - Added automated test suites: `test_barcode_scan_add.py` (4/4 passing) and `test_walkin_qr_and_reorder.py` (3/3 passing).
+- Executed full test suite across entire SaaS platform: **231 / 231 tests passing (100% pass rate)**.
 
 ---
 

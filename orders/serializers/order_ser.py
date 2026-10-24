@@ -44,12 +44,13 @@ class OrderSerializer(serializers.ModelSerializer):
     store_name = serializers.CharField(source='store.name', read_only=True)
     customer_email = serializers.EmailField(source='customer.email', read_only=True)
     vendor_email = serializers.EmailField(source='vendor.email', read_only=True, default=None)
+    qr_code_data_uri = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = [
             'id', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
-            'store', 'store_name', 'status', 'fulfillment_type', 'walk_in_code',
+            'store', 'store_name', 'status', 'fulfillment_type', 'walk_in_code', 'qr_code_data_uri',
             'delivery_address', 'delivery_fee', 'subtotal',
             'coupon_code', 'discount_amount',
             'total_amount', 'payment_method', 'payment_status',
@@ -64,7 +65,7 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
-            'store_name', 'status', 'walk_in_code', 'delivery_fee', 'subtotal',
+            'store_name', 'status', 'walk_in_code', 'qr_code_data_uri', 'delivery_fee', 'subtotal',
             'coupon_code', 'discount_amount',
             'total_amount', 'payment_status', 'accepted_at',
             'preparing_at', 'dispatched_at',
@@ -75,6 +76,14 @@ class OrderSerializer(serializers.ModelSerializer):
             'delivery_assigned_at', 'estimated_delivery_time',
             'items', 'sales_memo', 'created_at'
         ]
+
+    def get_qr_code_data_uri(self, obj) -> str:
+        from orders.models.order_mod import FulfillmentType
+        if obj.walk_in_code or obj.fulfillment_type in [FulfillmentType.WALK_IN, FulfillmentType.PICKUP]:
+            import urllib.parse
+            svg = obj.generate_qr_code_svg()
+            return f"data:image/svg+xml;utf8,{urllib.parse.quote(svg)}"
+        return ""
 
 
 

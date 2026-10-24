@@ -12,9 +12,12 @@ description: Product catalog, identifiers, measurement units, product availabili
 - Do not assume every unit is convertible. Store conversion factors only for compatible dimensions and define a base unit.
 - Store product images through the project's approved upload/storage path; validate file type, size and access.
 - Search must be tenant/store scoped and must not reveal private products.
+- Index barcode fields (`db_index=True`) for sub-millisecond in-store shelf barcode scanning (`/products/api/barcode-lookup/`).
+- Fallback barcode resolution to SKU if barcode is not set or matches store SKU.
 - Preserve order-item snapshots so catalog edits do not rewrite historical purchases.
 
 ## Acceptance checks
 - Invalid unit/quantity combinations are rejected.
 - Duplicate identifiers follow the documented uniqueness rule.
 - Product search and category filtering are scoped and paginated.
+- Barcode lookups enforce store tenant isolation (barcodes from other stores return 404).

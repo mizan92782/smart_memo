@@ -7,6 +7,7 @@ from products.models.product_mod import Product
 from categories.models.category_mod import Category
 from stores.models.store_mod import Store
 from products.repositories.product_repository import ProductRepository
+from products.services.product_service import ProductService
 from products.serializers.product_ser import ProductSerializer
 from shared.permissions.permissions import IsStoreOwner, IsVendor
 from shared.responses.responses import custome_success_response, custome_error_response
@@ -43,7 +44,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     serializer_class = ProductSerializer
 
     def get_permissions(self):
-        if self.action in ['list', 'retrieve', 'catalog']:
+        if self.action in ['list', 'retrieve', 'catalog', 'barcode_lookup']:
             return [AllowAny()]
         return [IsAuthenticated(), IsVendor()]
 
@@ -154,3 +155,25 @@ class ProductViewSet(viewsets.ModelViewSet):
             message="Products retrieved successfully.",
             data=serializer.data
         )
+
+    @action(detail=False, methods=['get'], url_path='barcode-lookup')
+    def barcode_lookup(self, request):
+        """Lookup active store product by barcode or SKU for in-store shelf scanning."""
+        code = request.query_params.get('code') or request.query_params.get('barcode') or request.query_params.get('sku')
+        store_id = request.query_params.get('store_id')
+
+        if not store_id:
+            return custome_error_response("store_id parameter is required.", status_code=status.HTTP_400_BAD_REQUEST)
+        if not code or not code.strip():
+            return custome_error_response("Barcode or SKU code is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = ProductService.lookup_by_barcode(int(store_id), code.strip())
+            if not product:
+                return custome_error_response("No product found matching this barcode or SKU in this store.", status_code=status.HTTP_404_NOT_FOUND)
+            return custome_success_response(
+                message="Product found.",
+                data=ProductSerializer(product).data
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)

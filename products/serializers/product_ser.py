@@ -17,6 +17,7 @@ class ProductSerializer(serializers.ModelSerializer):
             'name',
             'second_name',
             'sku',
+            'barcode',
             'description',
             'tags',
             'category',

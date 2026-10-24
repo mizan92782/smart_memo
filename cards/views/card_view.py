@@ -1,6 +1,7 @@
 """
 cards/views/card_view.py — Views for Card App
 """
+from decimal import Decimal
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -88,6 +89,40 @@ class CardViewSet(viewsets.ModelViewSet):
                 status_code=status.HTTP_201_CREATED
             )
         except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='scan-add')
+    def scan_add(self, request, pk=None):
+        """In-store shelf scanning: lookup by barcode or SKU and add directly to draft memo."""
+        card = self.get_object()
+        code = request.data.get('code') or request.data.get('barcode') or request.data.get('sku')
+        quantity = request.data.get('quantity', Decimal('1'))
+
+        if not code or not str(code).strip():
+            return custome_error_response("code parameter (barcode or SKU) is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            item = CardService.scan_add_product(
+                card_id=card.id,
+                code=code,
+                quantity=quantity,
+                actor=request.user
+            )
+            return custome_success_response(
+                message=f"'{item.product.name}' scanned and added to shopping memo.",
+                data={
+                    'item_id': item.id,
+                    'product_id': item.product_id,
+                    'product_name': item.product.name,
+                    'quantity': str(item.quantity),
+                    'unit_price': str(item.unit_price),
+                    'subtotal': str(item.subtotal)
+                },
+                status_code=status.HTTP_201_CREATED
+            )
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], url_path='update-item')

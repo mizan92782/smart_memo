@@ -23,7 +23,8 @@ class Product(BaseModel):
     )
     name = models.CharField(max_length=200)
     second_name = models.CharField(max_length=200, default="")
-    sku = models.CharField(max_length=100, blank=True, default="")
+    sku = models.CharField(max_length=100, blank=True, default="", db_index=True)
+    barcode = models.CharField(max_length=100, blank=True, default="", db_index=True)
     description = models.TextField(default=product_default_description)
     tags = ArrayField(
         models.CharField(max_length=50),
