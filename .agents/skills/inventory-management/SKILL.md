@@ -25,3 +25,8 @@ Prefer an auditable stock-movement ledger plus a current-balance representation 
 - Each stock change has a traceable movement reference.
 - Failed order/purchase operations roll back related stock changes.
 - Reconciliation can detect balance/ledger mismatches.
+
+## Verified Implementation Patterns
+- **Physical Inventory Reconciliation Sessions**: `StockReconciliation` snapshots `balance.on_hand` for counted products, calculates individual discrepancies and net financial variance value.
+- **Reservation Guard During Reconciliation**: Applying batch reconciliation acquires row locks (`select_for_update`) and strictly validates `new_on_hand >= balance.reserved`, guaranteeing ongoing active customer orders cannot be oversold due to physical count write-offs.
+- **Traceable Ledger & Audit Synchronization**: Count variances generate `StockMovementType.RECONCILIATION` entries in `StockLedgerEntry` stamped with the reconciliation session ID, write an immutable `AuditLog` entry, and invalidate tenant catalog caches in O(1) time.

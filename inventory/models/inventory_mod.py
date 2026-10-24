@@ -14,6 +14,7 @@ class StockMovementType(models.TextChoices):
     MANUAL_ADJUSTMENT = 'manual_adjustment', 'Manual Adjustment'
     DAMAGE_LOSS = 'damage_loss', 'Damage / Loss'
     RETURN = 'return', 'Customer Return'
+    RECONCILIATION = 'reconciliation', 'Physical Inventory Reconciliation'
 
 
 class StockBalance(BaseModel):

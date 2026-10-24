@@ -5,10 +5,11 @@ This document is the living single source of truth for feature development statu
 ---
 
 ## 📌 Last Working Feature
-- **Feature Name**: Full Multi-Tenant SaaS Platform (Customer Saved Delivery Addresses & Dynamic Distance-Based Delivery Fees, Production Rate Limiting & Abuse Controls, Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
-- **Status**: 🟢 **Completed & Verified (151 Tests Passing)**
+- **Feature Name**: Full Multi-Tenant SaaS Platform (Physical Inventory Audit & Batch Stock Reconciliation, Customer Saved Delivery Addresses & Dynamic Distance-Based Delivery Fees, Production Rate Limiting & Abuse Controls, Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
+- **Status**: 🟢 **Completed & Verified (159 Tests Passing)**
 - **Last Verified Working**: 2026-10-24
 - **Current State**:
+  - `inventory` (Physical Inventory Audit & Batch Stock Reconciliation): `StockReconciliation` and `StockReconciliationItem` models, draft count session snapshotting system on-hand balances, discrepancy computation (`physical_stock - system_stock`) and monetary variance valuation, atomic batch application (`POST /inventory/reconciliations/{id}/apply/`) updating `StockBalance` with row locking (`select_for_update`), enforcing active order reservation invariants, posting `StockMovementType.RECONCILIATION` entries to the immutable `StockLedgerEntry` ledger, recording `AuditAction.INVENTORY_RECONCILED` audit logs, invalidating cache, and enforcing strict vendor tenant isolation. Passing 8/8 tests.
   - `users` (Customer Saved Delivery Addresses & Dynamic Fees): `CustomerAddress` model with soft deletion, automated single default address invariant (`is_default`), coordinate validation, strict customer tenant isolation / IDOR prevention, dynamic tiered Haversine delivery fee calculator (`POST /stores/{id}/calculate-delivery-fee/`), memo checkout address integration snapshotting recipient, address, phone and instructions to `Order`, charging dynamic distance-based fees. Passing 10/10 tests.
   - `shared/throtling` & `users` (Production Rate Limiting & Abuse Controls): Scoped rate throttles (`LoginAnonThrottle` 5/min, `LoginUserThrottle` 5/min, `SignupAnonThrottle` 5/min, `NearbyDiscoveryThrottle` 30/min), global rate configuration in `REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']`, custom exception handler with automated `available_in_seconds` retry-after delay payload and HTTP 429 status response. Passing 3/3 tests.
   - `audit` (Audit Logging & Activity Trail): Immutable append-only audit ledger (`AuditLog`) recording all critical state mutations (store verification/suspension/reactivation, inventory adjustments, order cancellations, COD payment collections, password changes) with actor snapshot, IP address, user-agent, and structured JSON diffs. Enforces model-level immutability (`.save()` updates and `.delete()` blocked), `ReadOnlyModelViewSet` (POST/PUT/DELETE blocked with 405), and strict tenant isolation (vendors limited to their stores, staff/admin see platform-wide, customers blocked). Passing 13/13 tests.
@@ -54,8 +55,9 @@ This document is the living single source of truth for feature development statu
 | **18** | **Audit Logging & Activity Trail** | Immutable append-only audit trail (`AuditLog`), automated logging on store governance, inventory adjustments, orders & security events, tenant-scoped read-only API | 🟢 Completed | 🟢 13 Passing | 🟢 13 Passing | 🟢 Enforced |
 | **19** | **Rate Limiting & Abuse Controls** | Scoped throttling (`LoginAnonThrottle`, `LoginUserThrottle`, `SignupAnonThrottle`, `NearbyDiscoveryThrottle`), retry delay metadata in exception handler, 429 response structure | 🟢 Completed | 🟢 3 Passing | 🟢 3 Passing | 🟢 Enforced |
 | **20** | **Customer Addresses & Dynamic Delivery Fees** | Saved addresses (`CustomerAddress`), single default enforcement, soft-deletion, IDOR protection, Haversine delivery fee quote, checkout snapshotting | 🟢 Completed | 🟢 10 Passing | 🟢 10 Passing | 🟢 Enforced |
+| **21** | **Physical Inventory Audit & Batch Reconciliation** | Physical inventory stock takes (`StockReconciliation`), variance calculation, atomic ledger reconciliation, reservation guard | 🟢 Completed | 🟢 8 Passing | 🟢 8 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 151 / 151 (100% Passing)*
+*Total Active Automated Tests Passing: 159 / 159 (100% Passing)*
 
 ---
 
@@ -79,6 +81,7 @@ This document is the living single source of truth for feature development statu
 | **Products** | `products/tests/test_security.py` | Cross-tenant product isolation, public catalog search | 🟢 Passing | 3 / 3 OK |
 | **Inventory** | `inventory/tests/test_ledger.py` | Receiving, reserving, fulfilling, releasing stock & audit ledger | 🟢 Passing | 3 / 3 OK |
 | **Inventory** | `inventory/tests/test_concurrency.py` | Row-locking, negative stock prevention, cross-tenant adjustment block | 🟢 Passing | 3 / 3 OK |
+| **Inventory** | `inventory/tests/test_reconciliation.py` | Physical count sessions, variance calculation, atomic ledger reconciliation, reservation protection | 🟢 Passing | 8 / 8 OK |
 | **Cards** | `cards/tests/test_cards.py` | Multi-product card, single-store enforcement, stock non-deduction | 🟢 Passing | 3 / 3 OK |
 | **Cards** | `cards/tests/test_checkout.py` | Draft memo checkout to submitted order, inventory reservation, authorization | 🟢 Passing | 4 / 4 OK |
 | **Cards** | `cards/tests/test_memo_management.py` | Draft memo item CRUD (`add`, `update`, `remove`, `clear`), empty reset, IDOR, offer revalidation | 🟢 Passing | 5 / 5 OK |

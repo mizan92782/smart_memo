@@ -977,3 +977,101 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 - **Payload**: Accepts `"address_id": 12` (or falls back to customer's default address or profile).
 - **Behavior**: Snapshots recipient, formatted address, phone, and delivery instructions directly onto the `Order`, and calculates distance-based dynamic delivery fee.
 
+---
+
+## 16. Physical Inventory Audit & Batch Stock Reconciliation APIs
+
+### `GET /inventory/reconciliations/`
+- **Description**: List all inventory count and reconciliation sessions for the vendor's stores.
+- **Permissions**: `IsAuthenticated`, `IsVendor`.
+- **Query Parameters**:
+  - `store_id`: Filter sessions by store (must be owned by the vendor).
+
+### `POST /inventory/reconciliations/`
+- **Description**: Create a draft physical inventory count session. Snapshots current system stock for each item, compares against counted physical stock, and calculates quantity discrepancy and monetary variance.
+- **Permissions**: `IsAuthenticated`, `IsVendor`.
+- **Request Body**:
+```json
+{
+  "store_id": 1,
+  "notes": "Month-end audit for beverage section",
+  "items": [
+    {
+      "product_id": 10,
+      "physical_stock": "45.000",
+      "notes": "5 cans damaged"
+    },
+    {
+      "product_id": 12,
+      "physical_stock": "35.000",
+      "notes": "5 extra bottles found in backroom"
+    }
+  ]
+}
+```
+- **Response** (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Stock reconciliation draft created successfully.",
+  "data": {
+    "id": 5,
+    "store": 1,
+    "store_name": "Fresh Mart",
+    "reconciliation_number": "REC-1-A1B2C3D4",
+    "status": "draft",
+    "notes": "Month-end audit for beverage section",
+    "total_items_counted": 2,
+    "total_discrepancy_qty": "0.000",
+    "total_discrepancy_value": "-350.00",
+    "applied_at": null,
+    "applied_by_email": null,
+    "initiated_by_email": "vendor@example.com",
+    "items": [
+      {
+        "id": 15,
+        "product": 10,
+        "product_name": "Orange Juice 1L",
+        "system_stock": "50.000",
+        "physical_stock": "45.000",
+        "discrepancy": "-5.000",
+        "unit_cost_snapshot": "120.00",
+        "variance_value": "-600.00",
+        "notes": "5 cans damaged"
+      }
+    ]
+  }
+}
+```
+
+### `GET /inventory/reconciliations/{id}/`
+- **Description**: Detailed retrieval of a reconciliation session including all counted item discrepancies and variance breakdowns.
+- **Permissions**: `IsAuthenticated`, `IsVendor` (strictly scoped to store owner).
+
+### `POST /inventory/reconciliations/{id}/apply/`
+- **Description**: Atomically commit count variances into inventory balances.
+  - Acquires row locks (`select_for_update`) on affected `StockBalance` records.
+  - Enforces invariant: `new_on_hand` cannot drop below `balance.reserved` (prevents overselling active orders).
+  - Updates `balance.on_hand` and `product.stock`.
+  - Logs `StockMovementType.RECONCILIATION` entries in the append-only `StockLedgerEntry` table.
+  - Records an immutable `AuditLog` entry (`AuditAction.INVENTORY_RECONCILED`).
+  - Invalidates store catalog cache.
+  - Sets session status to `applied`.
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Stock reconciliation applied successfully to ledger.",
+  "data": {
+    "id": 5,
+    "status": "applied",
+    "applied_at": "2026-10-24T09:32:00Z",
+    "applied_by_email": "vendor@example.com"
+  }
+}
+```
+
+### `POST /inventory/reconciliations/{id}/cancel/`
+- **Description**: Cancels a draft reconciliation session without modifying inventory balances or ledger.
+- **Permissions**: `IsAuthenticated`, `IsVendor`.
+
