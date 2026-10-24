@@ -107,7 +107,10 @@ class OrderService:
             coupon_code = card.coupon.code
             applied_coupon = card.coupon
 
-        total_amount = max(Decimal('0.00'), subtotal - discount_amount) + delivery_fee
+        # Loyalty reward discount
+        loyalty_discount_amount = card.loyalty_discount_amount if card.loyalty_discount_amount else Decimal('0.00')
+
+        total_amount = max(Decimal('0.00'), subtotal - discount_amount - loyalty_discount_amount) + delivery_fee
 
         order = OrderRepository.create_order(
             customer=customer,
@@ -120,6 +123,7 @@ class OrderService:
             subtotal=subtotal,
             coupon_code=coupon_code,
             discount_amount=discount_amount,
+            loyalty_discount_amount=loyalty_discount_amount,
             total_amount=total_amount,
             payment_method=PaymentMethod.COD,
             payment_status=PaymentStatus.PENDING,
@@ -159,8 +163,15 @@ class OrderService:
             )
             card.coupon = None
 
+        if card.loyalty_points_redeemed > 0 or card.loyalty_stamps_redeemed > 0:
+            from stores.services.loyalty_service import LoyaltyService
+            LoyaltyService.process_order_checkout_deduction(order=order, customer=customer, card=card)
+            card.loyalty_points_redeemed = 0
+            card.loyalty_stamps_redeemed = 0
+            card.loyalty_discount_amount = Decimal('0.00')
+
         card.is_completed = True
-        card.save(update_fields=['is_completed', 'coupon', 'updated_at'])
+        card.save(update_fields=['is_completed', 'coupon', 'loyalty_points_redeemed', 'loyalty_stamps_redeemed', 'loyalty_discount_amount', 'updated_at'])
 
         # Dispatch async order and low-stock notifications
         from notifications.services.notification_service import NotificationService
@@ -347,7 +358,7 @@ class OrderService:
             for item in order.items.all()
         ]
 
-        OrderRepository.create_sales_memo(
+        memo = OrderRepository.create_sales_memo(
             order=order,
             customer=order.customer,
             vendor=order.vendor or (order.store.vendor if order.store else None),
@@ -357,10 +368,15 @@ class OrderService:
             subtotal=order.subtotal,
             coupon_code=order.coupon_code,
             discount_amount=order.discount_amount,
+            loyalty_discount_amount=order.loyalty_discount_amount,
             delivery_fee=order.delivery_fee,
             total_amount=order.total_amount,
             amount_paid=order.total_amount if payment_collected else Decimal('0.00')
         )
+
+        # Award loyalty points or visit stamps upon order completion
+        from stores.services.loyalty_service import LoyaltyService
+        LoyaltyService.award_order_loyalty(order=order, sales_memo=memo)
 
         from notifications.services.notification_service import NotificationService
         NotificationService.notify_order_status_change(order, OrderStatus.COMPLETED)
@@ -415,6 +431,10 @@ class OrderService:
         order.status = OrderStatus.CANCELLED if actor == order.customer else OrderStatus.REJECTED
         order.cancelled_at = timezone.now()
         order.save(update_fields=['status', 'cancelled_at', 'updated_at'])
+
+        if getattr(order, 'loyalty_points_redeemed', 0) > 0 or getattr(order, 'loyalty_discount_amount', Decimal('0.00')) > Decimal('0.00'):
+            from stores.services.loyalty_service import LoyaltyService
+            LoyaltyService.refund_order_loyalty(order)
 
         from notifications.services.notification_service import NotificationService
         NotificationService.notify_order_status_change(order, order.status)

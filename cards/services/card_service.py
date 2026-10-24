@@ -535,4 +535,21 @@ class CardService:
             card.refresh_from_db()
             return card
 
+    @staticmethod
+    def redeem_loyalty(card: Card, customer, points_to_redeem: int = 0, redeem_stamps: bool = False) -> dict:
+        """Apply store loyalty points or visit stamps reward to this shopping memo."""
+        from stores.services.loyalty_service import LoyaltyService
+        return LoyaltyService.redeem_loyalty_on_card(
+            card=card,
+            customer=customer,
+            points_to_redeem=points_to_redeem,
+            redeem_stamps=redeem_stamps
+        )
+
+    @staticmethod
+    def remove_loyalty(card: Card, customer) -> None:
+        """Remove loyalty reward from this shopping memo."""
+        from stores.services.loyalty_service import LoyaltyService
+        LoyaltyService.remove_loyalty_from_card(card=card, customer=customer)
+
 

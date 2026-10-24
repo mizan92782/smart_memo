@@ -22,17 +22,11 @@ class SalesMemoSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'memo_number', 'order', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
-            'coupon_code', 'discount_amount',
+            'coupon_code', 'discount_amount', 'loyalty_discount_amount', 'loyalty_points_earned', 'loyalty_stamps_earned',
             'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot',
             'thermal_receipt', 'created_at'
         ]
-        read_only_fields = [
-            'id', 'memo_number', 'order', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
-            'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
-            'coupon_code', 'discount_amount',
-            'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot',
-            'thermal_receipt', 'created_at'
-        ]
+        read_only_fields = fields
 
     def get_thermal_receipt(self, obj) -> str:
         return obj.format_thermal_receipt()
@@ -52,7 +46,8 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store', 'store_name', 'status', 'fulfillment_type', 'walk_in_code', 'qr_code_data_uri',
             'delivery_address', 'delivery_fee', 'subtotal',
-            'coupon_code', 'discount_amount',
+            'coupon_code', 'discount_amount', 'loyalty_points_redeemed', 'loyalty_discount_amount',
+            'loyalty_points_earned', 'loyalty_stamps_earned',
             'total_amount', 'payment_method', 'payment_status',
             'idempotency_key', 'notes', 'accepted_at',
             'preparing_at', 'dispatched_at',
@@ -66,7 +61,8 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'id', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store_name', 'status', 'walk_in_code', 'qr_code_data_uri', 'delivery_fee', 'subtotal',
-            'coupon_code', 'discount_amount',
+            'coupon_code', 'discount_amount', 'loyalty_points_redeemed', 'loyalty_discount_amount',
+            'loyalty_points_earned', 'loyalty_stamps_earned',
             'total_amount', 'payment_status', 'accepted_at',
             'preparing_at', 'dispatched_at',
             'completed_at', 'cancelled_at', 'paid_at',
