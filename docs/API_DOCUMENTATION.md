@@ -765,6 +765,63 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 ```
 - **Response**: `201 Created` with snapshot `Order` object.
 
+### `GET /cards/saved/`
+- **Description**: Returns all saved "buy next time" planning memos for the authenticated customer, optionally filtered by `store_id`.
+- **Permissions**: `IsAuthenticated`.
+- **Query Parameters**:
+  - `store_id` (int, optional): Scopes the listing to a specific store.
+- **Response**: Array of saved `Card` objects with `is_saved_for_later: true` and `planned_visit_date`.
+
+### `POST /cards/create-saved/`
+- **Description**: Directly creates a new named planning memo for a store with a future planned visit date.
+- **Permissions**: `IsAuthenticated`.
+- **Request Body**:
+```json
+{
+  "store_id": 1,
+  "title": "Weekend Home Renovation Supplies",
+  "planned_visit_date": "2026-11-05",
+  "notes": "Pick up hammer and 2 boxes of steel nails at aisle 4",
+  "shopping_mode": "walk_in"
+}
+```
+- **Response**: `201 Created` with `Card` object.
+
+### `POST /cards/{id}/save-for-later/`
+- **Description**: Converts an active shopping memo into a saved planning list for a future visit.
+- **Permissions**: `IsAuthenticated` (Card owner only).
+- **Request Body**:
+```json
+{
+  "title": "Deferred Tool Shopping",
+  "planned_visit_date": "2026-11-10"
+}
+```
+- **Response**: `200 OK` with updated `Card` object (`is_saved_for_later: true`).
+
+### `POST /cards/{id}/activate/`
+- **Description**: Activates a saved planning memo as the current active shopping cart for that store. If an active cart already exists, safely swaps the previous active cart to saved status (`strategy="swap"`) or merges items (`strategy="merge"`).
+- **Permissions**: `IsAuthenticated` (Card owner only).
+- **Request Body**:
+```json
+{
+  "strategy": "swap"
+}
+```
+- **Response**: `200 OK` with activated `Card` object (`is_saved_for_later: false`).
+
+### `POST /cards/{id}/duplicate/`
+- **Description**: Duplicates a memo and all its item snapshots into an independent saved or active memo.
+- **Permissions**: `IsAuthenticated` (Card owner only).
+- **Request Body**:
+```json
+{
+  "title": "Duplicated Tool List",
+  "as_saved": true
+}
+```
+- **Response**: `201 Created` with duplicated `Card` object.
+
 ---
 
 ## 13. Notifications & Alerting APIs

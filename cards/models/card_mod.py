@@ -51,6 +51,8 @@ class Card(BaseModel):
     )
     notes = models.TextField(blank=True, default='')
     is_completed = models.BooleanField(default=False)
+    is_saved_for_later = models.BooleanField(default=False)
+    planned_visit_date = models.DateField(null=True, blank=True)
 
     class Meta:
         ordering = ['-created_at']

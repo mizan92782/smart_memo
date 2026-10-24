@@ -137,3 +137,106 @@ class CardService:
             address_id=address_id
         )
 
+    @staticmethod
+    def create_saved_memo(
+        user,
+        store=None,
+        store_id=None,
+        title: str = "My Saved Memo",
+        planned_visit_date=None,
+        notes: str = "",
+        shopping_mode: str = 'walk_in'
+    ) -> Card:
+        """Create a dedicated saved memo for a future store visit."""
+        if store_id and not store:
+            from stores.repositories.store_repository import StoreRepository
+            store = StoreRepository.get_by_id(store_id)
+            if not store:
+                raise ValueError("Store not found.")
+        card = Card.objects.create(
+            user=user,
+            store=store,
+            vendor=store.vendor if store else None,
+            title=title or "My Saved Memo",
+            shopping_mode=shopping_mode,
+            notes=notes,
+            is_saved_for_later=True,
+            planned_visit_date=planned_visit_date,
+            is_completed=False
+        )
+        return card
+
+    @staticmethod
+    def save_memo_for_later(card: Card, actor, title: str = None, planned_visit_date=None) -> Card:
+        """Move an active shopping memo to saved for later status."""
+        if card.is_completed:
+            raise ValueError("Cannot save an already completed shopping memo.")
+        if card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify your own shopping memo.")
+
+        card.is_saved_for_later = True
+        update_fields = ['is_saved_for_later', 'updated_at']
+        if title:
+            card.title = title
+            update_fields.append('title')
+        if planned_visit_date is not None:
+            card.planned_visit_date = planned_visit_date
+            update_fields.append('planned_visit_date')
+        card.save(update_fields=update_fields)
+        return card
+
+    @staticmethod
+    @transaction.atomic
+    def activate_saved_memo(card: Card, actor, strategy: str = 'swap') -> Card:
+        """
+        Activate a saved memo into the user's active shopping cart for the store.
+        If an existing active memo exists:
+          - If empty: automatically replaces it.
+          - If non-empty and strategy='swap': safely sets previous active memo to is_saved_for_later=True.
+          - If strategy='merge': merges items into existing active memo.
+        """
+        if card.is_completed:
+            raise ValueError("Cannot activate a completed shopping memo.")
+        if card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify your own shopping memo.")
+
+        if not card.is_saved_for_later:
+            return card
+
+        # Check for existing active memo for this store
+        existing_active = CardRepository.get_active_card_for_user(user_id=actor.id, store_id=card.store_id)
+        if existing_active and existing_active.id != card.id:
+            if existing_active.items.count() == 0:
+                existing_active.delete()
+            elif strategy == 'merge':
+                for item in card.items.all():
+                    CardRepository.add_item_to_card(
+                        card=existing_active,
+                        product=item.product,
+                        quantity=item.quantity,
+                        unit_price=item.unit_price
+                    )
+                card.items.all().delete()
+                card.delete()
+                return existing_active
+            else:  # swap
+                existing_active.is_saved_for_later = True
+                existing_active.save(update_fields=['is_saved_for_later', 'updated_at'])
+
+        card.is_saved_for_later = False
+        card.save(update_fields=['is_saved_for_later', 'updated_at'])
+        return card
+
+    @staticmethod
+    @transaction.atomic
+    def duplicate_memo(card: Card, actor, new_title: str = None, as_saved: bool = True) -> Card:
+        """Duplicate a memo and all its items into a new saved or active memo."""
+        if card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only duplicate your own shopping memo.")
+
+        return CardRepository.clone_card_with_items(
+            card=card,
+            new_title=new_title,
+            is_saved_for_later=as_saved
+        )
+

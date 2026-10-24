@@ -19,37 +19,56 @@ class CardRepository:
         return Card.objects.select_related('store', 'user').prefetch_related('items__product').filter(pk=card_id).first()
 
     @staticmethod
-    def get_by_user(user_id: int, store_id: Optional[int] = None, is_completed: Optional[bool] = None) -> QuerySet[Card]:
-        """Fetch cards for a given user with optional store and completion filters."""
+    def get_by_user(user_id: int, store_id: Optional[int] = None, is_completed: Optional[bool] = None, is_saved_for_later: Optional[bool] = None) -> QuerySet[Card]:
+        """Fetch cards for a given user with optional store, completion, and saved filters."""
         qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(user_id=user_id)
         if store_id is not None:
             qs = qs.filter(store_id=store_id)
         if is_completed is not None:
             qs = qs.filter(is_completed=is_completed)
+        if is_saved_for_later is not None:
+            qs = qs.filter(is_saved_for_later=is_saved_for_later)
         return qs
 
     @staticmethod
-    def get_by_vendor(vendor_id: int, store_id: Optional[int] = None, is_completed: Optional[bool] = None) -> QuerySet[Card]:
+    def get_by_vendor(vendor_id: int, store_id: Optional[int] = None, is_completed: Optional[bool] = None, is_saved_for_later: Optional[bool] = None) -> QuerySet[Card]:
         """Fetch cards for a given vendor with optional store and completion filters."""
         qs = Card.objects.select_related('store', 'coupon', 'user').prefetch_related('items__product').filter(vendor_id=vendor_id)
         if store_id is not None:
             qs = qs.filter(store_id=store_id)
         if is_completed is not None:
             qs = qs.filter(is_completed=is_completed)
+        if is_saved_for_later is not None:
+            qs = qs.filter(is_saved_for_later=is_saved_for_later)
+        return qs
+
+    @staticmethod
+    def get_saved_cards_for_user(user_id: int, store_id: Optional[int] = None) -> QuerySet[Card]:
+        """Fetch saved 'buy next time' planning cards for user."""
+        qs = Card.objects.select_related('store', 'coupon', 'vendor', 'user').prefetch_related('items__product').filter(
+            user_id=user_id,
+            is_saved_for_later=True
+        )
+        if store_id is not None:
+            qs = qs.filter(store_id=store_id)
         return qs
 
     @staticmethod
     def get_active_card_for_user(user_id: int, store_id: Optional[int] = None) -> Optional[Card]:
-        """Fetch current active (uncompleted) card for user, optionally scoped to a store."""
-        qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(user_id=user_id, is_completed=False)
+        """Fetch current active (uncompleted, not saved for later) card for user, optionally scoped to a store."""
+        qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(
+            user_id=user_id, is_completed=False, is_saved_for_later=False
+        )
         if store_id is not None:
             qs = qs.filter(store_id=store_id)
         return qs.first()
 
     @staticmethod
     def get_or_create_active_card_for_user(user, store=None, shopping_mode: str = 'remote', title: Optional[str] = None) -> Card:
-        """Fetch or create current active (uncompleted) draft card for user and store."""
-        qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(user=user, is_completed=False)
+        """Fetch or create current active (uncompleted, not saved for later) draft card for user and store."""
+        qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(
+            user=user, is_completed=False, is_saved_for_later=False
+        )
         if store is not None:
             card = qs.filter(store=store).first()
             if not card:
@@ -67,7 +86,8 @@ class CardRepository:
                     store=store,
                     vendor=store.vendor,
                     shopping_mode=shopping_mode,
-                    title=title or f"{store.name} Memo"
+                    title=title or f"{store.name} Memo",
+                    is_saved_for_later=False
                 )
             return card
         else:
@@ -76,9 +96,33 @@ class CardRepository:
                 card = Card.objects.create(
                     user=user,
                     title=title or "My Memo Card",
-                    shopping_mode=shopping_mode
+                    shopping_mode=shopping_mode,
+                    is_saved_for_later=False
                 )
             return card
+
+    @staticmethod
+    def clone_card_with_items(card: Card, new_title: Optional[str] = None, is_saved_for_later: bool = True) -> Card:
+        """Create an exact duplicate of a card and its items."""
+        title = new_title or f"Copy of {card.title}"
+        new_card = Card.objects.create(
+            user=card.user,
+            store=card.store,
+            vendor=card.vendor,
+            title=title,
+            shopping_mode=card.shopping_mode,
+            notes=card.notes,
+            is_saved_for_later=is_saved_for_later,
+            is_completed=False
+        )
+        for item in card.items.all():
+            CardItem.objects.create(
+                card=new_card,
+                product=item.product,
+                quantity=item.quantity,
+                unit_price=item.unit_price
+            )
+        return new_card
 
     @staticmethod
     def create_card(user=None, user_id: Optional[int] = None, store=None, vendor=None, title: str = "My Memo Card") -> Card:

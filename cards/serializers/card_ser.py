@@ -29,7 +29,7 @@ class CardSerializer(serializers.ModelSerializer):
         model = Card
         fields = [
             'id', 'user', 'vendor', 'vendor_email', 'store', 'store_name', 'coupon', 'coupon_code',
-            'title', 'shopping_mode', 'notes', 'is_completed', 'created_at', 'items',
-            'total_price', 'discount_amount', 'estimated_total'
+            'title', 'shopping_mode', 'notes', 'is_completed', 'is_saved_for_later', 'planned_visit_date',
+            'created_at', 'items', 'total_price', 'discount_amount', 'estimated_total'
         ]
         read_only_fields = ['vendor', 'vendor_email']

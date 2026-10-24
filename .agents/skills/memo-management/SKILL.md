@@ -45,3 +45,10 @@ A draft memo is an editable shopping list. A submitted order is a customer's req
   - `Card`, `Order`, and `SalesMemo` each have explicit, indexed database foreign keys for both customer/user (`user` / `customer`) and store vendor (`vendor`).
   - Database `.save()` and repository methods automatically synchronize `vendor` from `store.vendor` / `order.store.vendor`.
   - Seamless dual-perspective querying: customers query their own cards (`CardRepository.get_by_user`), vendors can query cards directed to their stores (`CardRepository.get_by_vendor`, `GET /cards/?as_vendor=true`), and both perspectives are serialized with `vendor_email` and `customer_email`.
+- **Saved Store Memos & Future Visit Planning (`is_saved_for_later`)**:
+  - Customers can create named planning memos specifically for future store visits (`is_saved_for_later=True`, `planned_visit_date`) without colliding with their active shopping cart.
+  - `GET /cards/saved/?store_id=<id>`: retrieves saved planning lists scoped to a store.
+  - `POST /cards/create-saved/`: directly creates a new named future planning memo.
+  - `POST /cards/{id}/save-for-later/`: defers an active cart to saved status.
+  - `POST /cards/{id}/activate/`: activates a saved memo as the active cart for that store; if an active cart with items already exists, automatically swaps it to saved status so no items are lost.
+  - `POST /cards/{id}/duplicate/`: clones a memo and all item snapshots into an independent saved or active memo.

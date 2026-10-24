@@ -25,10 +25,14 @@ class CardViewSet(viewsets.ModelViewSet):
         is_comp_val = None
         if is_completed is not None:
             is_comp_val = is_completed.lower() in ['true', '1']
+        is_saved = self.request.query_params.get('is_saved_for_later')
+        is_saved_val = None
+        if is_saved is not None:
+            is_saved_val = is_saved.lower() in ['true', '1']
         as_vendor = self.request.query_params.get('as_vendor', '').lower() in ['true', '1']
         if as_vendor and hasattr(user, 'role') and user.role == 'vendor':
-            return CardRepository.get_by_vendor(user.id, store_id=store_id, is_completed=is_comp_val)
-        return CardRepository.get_by_user(user.id, store_id=store_id, is_completed=is_comp_val)
+            return CardRepository.get_by_vendor(user.id, store_id=store_id, is_completed=is_comp_val, is_saved_for_later=is_saved_val)
+        return CardRepository.get_by_user(user.id, store_id=store_id, is_completed=is_comp_val, is_saved_for_later=is_saved_val)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -238,4 +242,105 @@ class CardViewSet(viewsets.ModelViewSet):
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:
             return custome_error_response(f"Checkout failed: {str(exc)}", status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'])
+    def saved(self, request):
+        """Retrieve all saved 'buy next time' planning memos for the customer."""
+        store_id = request.query_params.get('store_id')
+        cards = CardRepository.get_saved_cards_for_user(user_id=request.user.id, store_id=store_id)
+        page = self.paginate_queryset(cards)
+        if page is not None:
+            serializer = CardSerializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = CardSerializer(cards, many=True)
+        return custome_success_response(
+            message="Saved planning memos retrieved.",
+            data=serializer.data
+        )
+
+    @action(detail=False, methods=['post'], url_path='create-saved')
+    def create_saved(self, request):
+        """Create a new saved planning memo for a store."""
+        store_id = request.data.get('store_id')
+        title = request.data.get('title', 'My Saved Memo')
+        planned_visit_date = request.data.get('planned_visit_date')
+        notes = request.data.get('notes', '')
+        shopping_mode = request.data.get('shopping_mode', 'walk_in')
+        try:
+            card = CardService.create_saved_memo(
+                user=request.user,
+                store_id=store_id,
+                title=title,
+                planned_visit_date=planned_visit_date,
+                notes=notes,
+                shopping_mode=shopping_mode
+            )
+            return custome_success_response(
+                message="Saved planning memo created.",
+                data=CardSerializer(card).data,
+                status_code=status.HTTP_201_CREATED
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='save-for-later')
+    def save_for_later(self, request, pk=None):
+        """Save an active memo for later planning (future store visit)."""
+        card = self.get_object()
+        title = request.data.get('title')
+        planned_visit_date = request.data.get('planned_visit_date')
+        try:
+            saved_card = CardService.save_memo_for_later(
+                card=card,
+                actor=request.user,
+                title=title,
+                planned_visit_date=planned_visit_date
+            )
+            return custome_success_response(
+                message="Shopping memo saved for future visit.",
+                data=CardSerializer(saved_card).data
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=True, methods=['post'])
+    def activate(self, request, pk=None):
+        """Activate a saved planning memo as the current active shopping cart for that store."""
+        card = self.get_object()
+        strategy = request.data.get('strategy', 'swap')
+        try:
+            active_card = CardService.activate_saved_memo(card=card, actor=request.user, strategy=strategy)
+            return custome_success_response(
+                message="Planning memo activated as active shopping memo.",
+                data=CardSerializer(active_card).data
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=True, methods=['post'])
+    def duplicate(self, request, pk=None):
+        """Duplicate a memo and all its items into a new saved or active memo."""
+        card = self.get_object()
+        new_title = request.data.get('title')
+        as_saved = request.data.get('as_saved', True)
+        if isinstance(as_saved, str):
+            as_saved = as_saved.lower() in ['true', '1']
+        try:
+            cloned = CardService.duplicate_memo(
+                card=card,
+                actor=request.user,
+                new_title=new_title,
+                as_saved=as_saved
+            )
+            return custome_success_response(
+                message="Shopping memo duplicated successfully.",
+                data=CardSerializer(cloned).data,
+                status_code=status.HTTP_201_CREATED
+            )
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
 
