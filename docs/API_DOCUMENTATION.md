@@ -1797,3 +1797,112 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 }
 ```
 
+---
+
+## 19. Store Customer Loyalty Points & Visit Stamp Cards APIs
+
+### `GET /stores/{id}/loyalty-program/`
+- **Description**: Retrieve public loyalty program rules and reward parameters for a store.
+- **Permissions**: Public / `AllowAny`.
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Store loyalty program retrieved.",
+  "data": {
+    "id": 1,
+    "store": 5,
+    "store_name": "Daily Fresh Supermarket",
+    "is_active": true,
+    "program_type": "points",
+    "points_per_currency_unit": "1.00",
+    "currency_per_point_redemption": "0.0500",
+    "min_points_to_redeem": 50,
+    "stamps_for_reward": 10,
+    "stamp_reward_discount_amount": "5.00",
+    "min_order_for_stamp": "10.00"
+  }
+}
+```
+
+### `PATCH /stores/{id}/loyalty-program/`
+- **Description**: Store vendor updates their store's loyalty program rules (switch between `points` and `stamps`, adjust redemption exchange rates, minimum points, reward amounts).
+- **Permissions**: `IsAuthenticated` (Store Vendor or Staff).
+- **Request Body**:
+```json
+{
+  "is_active": true,
+  "program_type": "stamps",
+  "stamps_for_reward": 10,
+  "stamp_reward_discount_amount": "5.00",
+  "min_order_for_stamp": "10.00"
+}
+```
+
+### `GET /stores/{id}/loyalty/`
+- **Description**: Customer views their store-specific loyalty balance, visit stamps progress, reward eligibility, and recent ledger transactions for that store.
+- **Permissions**: `IsAuthenticated` (Customer).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Loyalty card summary for 'Daily Fresh Supermarket'.",
+  "data": {
+    "store_id": 5,
+    "store_name": "Daily Fresh Supermarket",
+    "is_program_active": true,
+    "program_type": "stamps",
+    "points_balance": 0,
+    "stamps_balance": 8,
+    "stamps_for_reward": 10,
+    "stamps_needed": 2,
+    "can_redeem": false,
+    "potential_discount": "0.00",
+    "recent_transactions": [...]
+  }
+}
+```
+
+### `GET /users/loyalty-cards/`
+- **Description**: Customer views all their active store loyalty punch cards and point balances across all stores they shop at.
+- **Permissions**: `IsAuthenticated` (Customer).
+
+### `GET /stores/{id}/loyalty-customers/`
+- **Description**: Vendor views top loyal customers, point balances, and visit counts for their store.
+- **Permissions**: `IsAuthenticated` (Store Vendor or Staff).
+
+### `POST /cards/{id}/redeem-loyalty/`
+- **Description**: Applies store loyalty points or completed visit stamps reward directly to an active draft shopping memo, reducing the estimated total and budget consumption.
+- **Permissions**: `IsAuthenticated` (Customer / Memo Owner).
+- **Request Body (Points)**:
+```json
+{
+  "points_to_redeem": 100
+}
+```
+- **Request Body (Stamps)**:
+```json
+{
+  "redeem_stamps": true
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Loyalty reward applied to shopping memo.",
+  "data": {
+    "points_redeemed": 100,
+    "stamps_redeemed": 0,
+    "loyalty_discount_amount": "5.00",
+    "estimated_total": "45.00",
+    "card": { ... }
+  }
+}
+```
+
+### `POST /cards/{id}/remove-loyalty/`
+- **Description**: Removes applied loyalty discount from draft shopping memo.
+- **Permissions**: `IsAuthenticated` (Customer / Memo Owner).
+
+

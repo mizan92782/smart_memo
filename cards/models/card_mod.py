@@ -54,6 +54,9 @@ class Card(BaseModel):
     is_saved_for_later = models.BooleanField(default=False)
     planned_visit_date = models.DateField(null=True, blank=True)
     budget_limit = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    loyalty_points_redeemed = models.PositiveIntegerField(default=0)
+    loyalty_stamps_redeemed = models.PositiveIntegerField(default=0)
+    loyalty_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
 
     class Meta:
         ordering = ['-created_at']
@@ -107,7 +110,7 @@ class Card(BaseModel):
 
     @property
     def estimated_total(self):
-        return max(Decimal('0.00'), self.total_price - self.discount_amount)
+        return max(Decimal('0.00'), self.total_price - self.discount_amount - self.loyalty_discount_amount)
 
     @property
     def total_items_count(self) -> int:

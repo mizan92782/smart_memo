@@ -517,5 +517,48 @@ class CardViewSet(viewsets.ModelViewSet):
         except (ValueError, PermissionError) as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'], url_path='redeem-loyalty')
+    def redeem_loyalty(self, request, pk=None):
+        """Redeem store loyalty points or visit stamps reward on this shopping memo."""
+        card = self.get_object()
+        points_to_redeem = request.data.get('points_to_redeem', 0)
+        redeem_stamps = request.data.get('redeem_stamps', False)
+        if isinstance(redeem_stamps, str):
+            redeem_stamps = redeem_stamps.lower() in ['true', '1']
+
+        try:
+            from django.core.exceptions import ValidationError as DjangoValidationError
+            result = CardService.redeem_loyalty(
+                card=card,
+                customer=request.user,
+                points_to_redeem=points_to_redeem,
+                redeem_stamps=redeem_stamps
+            )
+            card.refresh_from_db()
+            return custome_success_response(
+                message="Loyalty reward applied to shopping memo.",
+                data={
+                    **result,
+                    'card': CardSerializer(card).data
+                }
+            )
+        except (ValueError, PermissionError, DjangoValidationError) as exc:
+            msg = exc.messages[0] if hasattr(exc, 'messages') else str(exc)
+            return custome_error_response(msg, status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='remove-loyalty')
+    def remove_loyalty(self, request, pk=None):
+        """Remove redeemed loyalty discount from this shopping memo."""
+        card = self.get_object()
+        try:
+            CardService.remove_loyalty(card=card, customer=request.user)
+            card.refresh_from_db()
+            return custome_success_response(
+                message="Loyalty reward removed from shopping memo.",
+                data=CardSerializer(card).data
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
 
 

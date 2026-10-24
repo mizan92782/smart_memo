@@ -34,14 +34,19 @@ class CardSerializer(serializers.ModelSerializer):
     budget_remaining = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
     is_over_budget = serializers.BooleanField(read_only=True)
     budget_used_percent = serializers.FloatField(read_only=True)
+    loyalty_points_redeemed = serializers.IntegerField(read_only=True)
+    loyalty_stamps_redeemed = serializers.IntegerField(read_only=True)
+    loyalty_discount_amount = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Card
         fields = [
             'id', 'user', 'vendor', 'vendor_email', 'store', 'store_name', 'coupon', 'coupon_code',
             'title', 'shopping_mode', 'notes', 'is_completed', 'is_saved_for_later', 'planned_visit_date',
-            'created_at', 'items', 'total_price', 'discount_amount', 'estimated_total',
+            'created_at', 'items', 'total_price', 'discount_amount', 'loyalty_points_redeemed',
+            'loyalty_stamps_redeemed', 'loyalty_discount_amount', 'estimated_total',
             'total_items_count', 'picked_items_count', 'is_fully_picked', 'picking_progress_percent',
             'budget_limit', 'budget_remaining', 'is_over_budget', 'budget_used_percent'
         ]
-        read_only_fields = ['vendor', 'vendor_email']
+        read_only_fields = ['vendor', 'vendor_email', 'loyalty_points_redeemed', 'loyalty_stamps_redeemed', 'loyalty_discount_amount']
+
