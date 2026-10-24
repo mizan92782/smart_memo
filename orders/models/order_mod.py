@@ -109,6 +109,11 @@ class Order(BaseModel):
     # In-Store Counter POS Walk-In Verification Code
     walk_in_code = models.CharField(max_length=12, blank=True, db_index=True)
 
+    # Store Loyalty Points & Visit Stamps
+    loyalty_points_redeemed = models.PositiveIntegerField(default=0)
+    loyalty_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    loyalty_points_earned = models.PositiveIntegerField(default=0)
+    loyalty_stamps_earned = models.PositiveIntegerField(default=0)
 
     class Meta:
         ordering = ['-created_at']
@@ -221,6 +226,9 @@ class SalesMemo(BaseModel):
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
     walk_in_code_snapshot = models.CharField(max_length=12, blank=True, default="")
+    loyalty_discount_amount = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    loyalty_points_earned = models.PositiveIntegerField(default=0)
+    loyalty_stamps_earned = models.PositiveIntegerField(default=0)
 
     class Meta:
         verbose_name = 'Sales Memo'
@@ -313,12 +321,19 @@ class SalesMemo(BaseModel):
             coupon_label = f"Discount ({self.coupon_code}):" if self.coupon_code else "Discount:"
             lines.append(row(coupon_label, f"-{self.discount_amount:.2f}"))
 
+        if self.loyalty_discount_amount and self.loyalty_discount_amount > 0:
+            lines.append(row("Loyalty Reward:", f"-{self.loyalty_discount_amount:.2f}"))
+
         if self.delivery_fee and self.delivery_fee > 0:
             lines.append(row("Delivery Fee:", f"{self.delivery_fee:.2f}"))
 
         lines.append("-" * w)
         lines.append(row("TOTAL AMOUNT:", f"{self.total_amount:.2f}"))
         lines.append(row("AMOUNT PAID:", f"{self.amount_paid:.2f}"))
+        if self.loyalty_points_earned and self.loyalty_points_earned > 0:
+            lines.append(row("Points Earned:", f"+{self.loyalty_points_earned} pts"))
+        if self.loyalty_stamps_earned and self.loyalty_stamps_earned > 0:
+            lines.append(row("Visit Stamp:", f"+{self.loyalty_stamps_earned} stamp"))
         lines.append("-" * w)
 
         lines.append(center("Thank you for shopping with us!"))

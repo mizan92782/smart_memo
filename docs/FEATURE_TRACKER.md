@@ -73,8 +73,9 @@ This document is the living single source of truth for feature development statu
 | **30** | **In-Store Shelf Barcode Scanning & QR Code** | Product barcode/SKU shelf scanner (`POST /cards/{id}/scan-add/`), public barcode lookup (`GET /products/api/barcode-lookup/`), standalone vector SVG QR codes (`GET /orders/{id}/qr-code/`), quick 1-tap reordering (`POST /orders/{id}/reorder/`) | 🟢 Completed | 🟢 7 Passing | 🟢 7 Passing | 🟢 Enforced |
 | **31** | **In-Store Shelf Navigation & Basket Picking** | Aisle and shelf location tracking on products (`aisle`, `shelf_location`), basket picking checklist (`is_picked`, `picked_at`), progress metrics, toggle (`POST /cards/{id}/toggle-item-picked/`), batch pick (`POST /cards/{id}/batch-pick/`), walking aisle route sorting (`sort_by=aisle`) | 🟢 Completed | 🟢 6 Passing | 🟢 6 Passing | 🟢 Enforced |
 | **32** | **Cross-Store Memo Comparison & Store Transfer** | Memo budget limits (`budget_limit`, `budget_remaining`, `is_over_budget`, `budget_used_percent`, `PATCH /cards/{id}/set-budget/`), cross-store catalog comparison (`POST /cards/{id}/compare-store/`) with barcode->SKU->name matching, price difference and savings calculation, store memo transfer (`POST /cards/{id}/transfer-store/`) with coupon decoupling | 🟢 Completed | 🟢 5 Passing | 🟢 5 Passing | 🟢 Enforced |
+| **33** | **Store Loyalty Points & Visit Stamp Cards** | Store-scoped loyalty programs (`StoreLoyaltyProgram`, `POINTS` vs `STAMPS`), customer punch cards (`CustomerStoreLoyalty`), append-only ledger (`LoyaltyTransaction`), draft memo point/stamp redemption (`POST /cards/{id}/redeem-loyalty/`), checkout deduction & cancellation refund, order completion automated point/stamp award & thermal receipt snapshot | 🟢 Completed | 🟢 6 Passing | 🟢 6 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 242 / 242 (100% Passing)*
+*Total Active Automated Tests Passing: 248 / 248 (100% Passing)*
 
 ---
 
@@ -94,6 +95,7 @@ This document is the living single source of truth for feature development statu
 | **Stores** | `stores/tests/test_platform_admin.py` | Store verification, suspension/reactivation, cross-tenant admin overview, unverified checkout guard | 🟢 Passing | 12 / 12 OK |
 | **Stores** | `stores/tests/test_reviews.py` | Verified reviews, completed order checks, anti-spam unique guard, store average rating sync, replies | 🟢 Passing | 10 / 10 OK |
 | **Stores** | `stores/tests/test_coupons.py` | Percentage coupons with cap, fixed amount, date validation, min order threshold, usage limits, checkout snapshotting | 🟢 Passing | 10 / 10 OK |
+| **Stores** | `stores/tests/test_store_loyalty.py` | Store loyalty programs, customer punch cards, draft memo point/stamp redemption, checkout debit & cancellation refund, order completion award | 🟢 Passing | 6 / 6 OK |
 | **Audit** | `audit/tests/test_audit_logging.py` | Immutable activity trail, model-level update/delete blocking, actor snapshotting, tenant isolation | 🟢 Passing | 13 / 13 OK |
 | **Users** | `users/tests/test_throttling.py` | Login/signup/nearby rate limiting, Retry-After header, 429 response structure | 🟢 Passing | 3 / 3 OK |
 | **Categories** | `categories/tests/test_categories.py` | Category creation, title capitalization, store association | 🟢 Passing | 1 / 1 OK |
@@ -238,7 +240,17 @@ This document is the living single source of truth for feature development statu
   - Implemented cross-store shopping memo comparison endpoint `POST /cards/{id}/compare-store/` via `CardService.compare_with_store()` resolving items by **Barcode -> SKU -> Case-Insensitive Product Name**, calculating price variances, total potential savings, missing items, and fulfillment feasibility.
   - Implemented store memo transfer endpoint `POST /cards/{id}/transfer-store/` via `CardService.transfer_to_store()` re-binding items to target store catalog, updating store and vendor foreign keys, clearing store-specific coupons, and supporting `omit_missing` and `clone` options.
   - Added automated test suite: `test_store_comparison_and_budget.py` (5/5 passing).
-- Executed full test suite across entire SaaS platform: **242 / 242 tests passing (100% pass rate)**.
+- Implemented **Phase 33: Store-Scoped Customer Loyalty Points, Visit Stamp Cards & Memo Reward Redemption**:
+  - Implemented `StoreLoyaltyProgram`, `CustomerStoreLoyalty`, and append-only `LoyaltyTransaction` models with `POINTS` and `STAMPS` program types.
+  - Added loyalty fields to `Card`: `loyalty_points_redeemed`, `loyalty_stamps_redeemed`, `loyalty_discount_amount`, and updated dynamic `estimated_total`.
+  - Added loyalty tracking to `Order` and `SalesMemo`: `loyalty_points_redeemed`, `loyalty_discount_amount`, `loyalty_points_earned`, `loyalty_stamps_earned`.
+  - Implemented `LoyaltyRepository` and `LoyaltyService` with atomic boundaries and row locking.
+  - Added draft memo loyalty redemption: `POST /cards/{id}/redeem-loyalty/` and `POST /cards/{id}/remove-loyalty/`.
+  - Connected authoritative checkout debit in `OrderService.submit_order_from_card` and automated refund in `OrderService.cancel_order`.
+  - Automated point/stamp accrual upon order completion in `OrderService.fulfill_order` and in-store walk-in handover, snapshotting into `SalesMemo` and 40-col thermal receipt format.
+  - Exposed vendor program management (`GET / PATCH /stores/{id}/loyalty-program/`, `GET /stores/{id}/loyalty-customers/`) and customer wallet (`GET /stores/{id}/loyalty/`, `GET /users/loyalty-cards/`).
+  - Added automated test suite: `test_store_loyalty.py` (6/6 passing).
+- Executed full test suite across entire SaaS platform: **248 / 248 tests passing (100% pass rate)**.
 
 ---
 
