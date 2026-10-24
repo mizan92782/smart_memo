@@ -24,3 +24,10 @@ description: Vendor store profile, location, opening hours, delivery settings an
 - Unauthorized vendors cannot modify a store.
 - Historical orders remain readable after store deactivation.
 - Invalid coordinates and malformed opening hours are rejected.
+
+## Verified Architecture Patterns
+- **Store Verification & Compliance**: Stores have explicit verification fields (`is_verified`, `verified_at`, `verification_notes`). Only `STAFF` and `SUPERUSER` roles can verify or suspend stores.
+- **Vendor Read-Only Protection**: Make `is_verified`, `verified_at`, and `verification_notes` read-only in `StoreSerializer` so vendors cannot self-verify.
+- **Discovery & Checkout Guard**: Both `get_public_active_stores()` and `submit_order_from_card` enforce `is_active=True and is_verified=True`. Suspended or unverified stores are hidden from public searches and reject new orders.
+- **Platform-Wide Governance Aggregations**: Staff and Superusers can query `GET /stores/governance-overview/` which computes platform metrics (stores breakdown, user distribution, GMV, orders status) via SQL aggregations (`Count`, `Sum`, `Coalesce`).
+

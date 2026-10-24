@@ -23,3 +23,13 @@ A draft memo is an editable shopping list. A submitted order is a customer's req
 - Draft creation does not create a sale or stock movement.
 - Invalid quantities and unavailable products are handled clearly.
 - Retried submissions do not create duplicate orders.
+
+## Verified Implementation Pattern
+- **Draft Memo Lifecycle & Endpoints**:
+  - `GET /cards/active/`: retrieve or auto-initialize customer's current draft memo.
+  - `POST /cards/{id}/add-item/`: add product to memo enforcing single-store rule and zero stock deduction.
+  - `POST /cards/{id}/update-item/`: adjust item quantity with Decimal precision.
+  - `POST /cards/{id}/remove-item/`: delete an item from memo; resets `card.store = None` if memo becomes empty.
+  - `POST /cards/{id}/clear/`: empty draft memo and reset store binding.
+- **Tenant Isolation & IDOR Protection**: `CardViewSet` requires `IsAuthenticated` and scopes `get_queryset()` strictly to `user=request.user`. Customer A cannot inspect, modify, or add items to Customer B's draft memo (404 / 403).
+- **Authoritative Price Revalidation at Checkout**: `OrderService.submit_order_from_card` verifies each item against `Product.effective_price` and product active status before creating the order. If an offer expired or price was updated while sitting in draft, the authoritative price is updated automatically and line totals recalculated.

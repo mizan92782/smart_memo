@@ -4,7 +4,7 @@ from shared.base.base_serializer import BaseModelSerializer
 
 
 class StoreSerializer(BaseModelSerializer):
-    """Full serializer for Store management by vendor."""
+    """Full serializer for Store management by vendor and platform admins."""
     vendor_email = serializers.EmailField(source='vendor.email', read_only=True)
 
     class Meta:
@@ -12,11 +12,16 @@ class StoreSerializer(BaseModelSerializer):
         fields = [
             'id', 'name', 'slug', 'description', 'phone_number', 'email',
             'address', 'latitude', 'longitude', 'is_active',
+            'is_verified', 'verified_at', 'verification_notes',
             'opening_time', 'closing_time', 'delivery_enabled',
             'pickup_enabled', 'delivery_fee', 'min_order_amount',
             'vendor_email', 'created_at', 'updated_at'
         ]
-        read_only_fields = ['id', 'slug', 'created_at', 'updated_at', 'vendor_email']
+        read_only_fields = [
+            'id', 'slug', 'created_at', 'updated_at', 'vendor_email',
+            'is_verified', 'verified_at', 'verification_notes'
+        ]
+
 
 
 from stores.models.favorite_mod import FavoriteStore

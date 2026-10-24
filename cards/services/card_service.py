@@ -9,15 +9,26 @@ class CardService:
     """Encapsulates business operations for Card (Draft Shopping Memo)."""
 
     @staticmethod
-    def add_product_to_card(card_id: int, product_id: int, quantity: Decimal = Decimal('1')) -> CardItem:
-        """Add product to card enforcing single-store rule and availability."""
+    def get_or_create_active_memo(user) -> Card:
+        """Fetch or initialize current draft shopping memo for user."""
+        return CardRepository.get_or_create_active_card_for_user(user)
+
+    @staticmethod
+    def add_product_to_card(card_id: int, product_id: int, quantity: Decimal = Decimal('1'), actor=None) -> CardItem:
+        """Add product to card enforcing single-store rule, availability, and memo ownership."""
         card = CardRepository.get_by_id(card_id)
         if not card:
             raise ValueError("Card not found.")
 
+        if card.is_completed:
+            raise ValueError("Cannot modify an already completed shopping memo.")
+
+        if actor and card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify your own shopping memo.")
+
         product = ProductRepository.get_by_id(product_id)
-        if not product:
-            raise ValueError("Product not found.")
+        if not product or product.is_deleted or not product.is_active:
+            raise ValueError("Product not found or inactive.")
 
         if card.store is None and product.store is not None:
             card.store = product.store
@@ -30,6 +41,63 @@ class CardService:
             raise ValueError("Quantity must be strictly positive.")
 
         return CardRepository.add_item_to_card(card=card, product=product, quantity=qty)
+
+    @staticmethod
+    def update_item_quantity(card_id: int, item_id: int, quantity: Decimal, actor) -> CardItem:
+        """Update the quantity of an item within the draft shopping memo."""
+        card = CardRepository.get_by_id(card_id)
+        if not card:
+            raise ValueError("Card not found.")
+
+        if card.is_completed:
+            raise ValueError("Cannot modify an already completed shopping memo.")
+
+        if card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify your own shopping memo.")
+
+        item = card.items.filter(pk=item_id).first()
+        if not item:
+            raise ValueError("Item not found in shopping memo.")
+
+        qty = Decimal(str(quantity))
+        if qty <= 0:
+            raise ValueError("Quantity must be strictly positive.")
+
+        return CardRepository.update_item_quantity(item=item, quantity=qty)
+
+    @staticmethod
+    def remove_item_from_card(card_id: int, item_id: int, actor) -> None:
+        """Remove an item from draft memo. If memo becomes empty, resets store."""
+        card = CardRepository.get_by_id(card_id)
+        if not card:
+            raise ValueError("Card not found.")
+
+        if card.is_completed:
+            raise ValueError("Cannot modify an already completed shopping memo.")
+
+        if card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify your own shopping memo.")
+
+        item = card.items.filter(pk=item_id).first()
+        if not item:
+            raise ValueError("Item not found in shopping memo.")
+
+        CardRepository.remove_item_from_card(card=card, item=item)
+
+    @staticmethod
+    def clear_card(card_id: int, actor) -> None:
+        """Clear all items from draft shopping memo and reset store binding."""
+        card = CardRepository.get_by_id(card_id)
+        if not card:
+            raise ValueError("Card not found.")
+
+        if card.is_completed:
+            raise ValueError("Cannot modify an already completed shopping memo.")
+
+        if card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify your own shopping memo.")
+
+        CardRepository.clear_card(card=card)
 
     @staticmethod
     def checkout_card(

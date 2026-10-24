@@ -33,3 +33,21 @@ class RegisterSerializer(serializers.Serializer):
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True)
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(write_only=True, required=True)
+    new_password = serializers.CharField(write_only=True, min_length=8, required=True)
+
+
+class ProfileUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Profile
+        fields = ['full_name', 'phone_number', 'address', 'avatar']
+        extra_kwargs = {
+            'full_name': {'required': False},
+            'phone_number': {'required': False},
+            'address': {'required': False},
+            'avatar': {'required': False, 'allow_null': True},
+        }
+

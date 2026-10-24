@@ -5,21 +5,23 @@ This document is the living single source of truth for feature development statu
 ---
 
 ## 📌 Last Working Feature
-- **Feature Name**: Full Multi-Tenant SaaS Platform (Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
-- **Status**: 🟢 **Completed & Verified (90 Tests Passing)**
+- **Feature Name**: Full Multi-Tenant SaaS Platform (Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
+- **Status**: 🟢 **Completed & Verified (125 Tests Passing)**
 - **Last Verified Working**: 2026-10-24
 - **Current State**:
+  - `stores` (Platform Administration & Governance): Administrative store verification (`is_verified`, `verified_at`, `verification_notes`), store suspension (`POST /stores/{id}/suspend/`), reactivation (`POST /stores/{id}/activate/`), platform-wide metrics overview (`GET /stores/governance-overview/`), exclusion of unverified/inactive stores from public discovery and checkout orders, role governance enforced with `IsStaffOrAdmin`. Passing 16/16 tests.
+  - `users` (Authentication Lifecycle & Profile Management): DRF Token authentication (`rest_framework.authtoken`), login (`POST /users/login/`) delivering tokens and user roles, logout (`POST /users/logout/`) revoking tokens and sessions, password changes (`POST /users/change-password/`) verifying current hash, rotating tokens, and profile retrieval and updates (`GET / PATCH /users/profile/`) strictly isolated per actor. Passing 24/24 tests.
+  - `orders` (Fulfillment Pipeline): Complete 5-stage order fulfillment state machine (`SUBMITTED -> ACCEPTED -> PREPARING -> READY_FOR_PICKUP / OUT_FOR_DELIVERY -> COMPLETED`) with transition timestamps (`accepted_at`, `preparing_at`, `dispatched_at`, `completed_at`), actor-based cancellation policy (customers blocked from cancelling once prep has started), automated customer lifecycle alerts, and clean non-colliding action routing. Passing 9/9 tests.
+  - `cards` (Draft Memo Management): Customer draft shopping memos with active memo resolution (`GET /cards/active/`), single-store scoping, zero premature stock impact, full item operations (`add_item`, `update_item`, `remove_item`, `clear`), store unbinding on empty memo, strict customer tenant isolation, and authoritative dynamic catalog price/offer revalidation at checkout. Passing 12/12 tests.
   - `observability`: Container liveness (`/health/live/`), deep readiness probe (`/health/ready/`) validating PostgreSQL connectivity, pending migrations via `MigrationExecutor`, and cache accessibility without leaking secrets. Content negotiation on `/health/` supporting JSON metrics. Passing 6/6 tests.
   - `caching`: `CacheService` with O(1) versioned tenant namespaces (`version:{namespace}:store:{store_id}`). Catalog and store public details cached with automatic invalidation on store updates, category CRUD, and product changes. Authoritative checkout bypasses cache. Passing 4/4 tests.
   - `orders` (Delivery & Payment): Decoupled Cash On Delivery (COD) payment collection (`POST /orders/{id}/collect-payment/`), customer phone snapshotting, fulfillment validation (`pickup_enabled`, `delivery_enabled`, `min_order_amount`). Passing 4/4 tests.
-  - `notifications`: In-app & Celery async alerting engine (`Notification`), idempotent dispatching, automated order lifecycle notifications (`ORDER_SUBMITTED`, `ORDER_ACCEPTED`, `ORDER_COMPLETED`, `ORDER_CANCELLED`), real-time low-stock alerts triggered on inventory drops, unread count badge endpoints, and recipient-level isolation, passing tests.
+  - `notifications`: In-app & Celery async alerting engine (`Notification`), idempotent dispatching, automated order lifecycle notifications (`ORDER_SUBMITTED`, `ORDER_ACCEPTED`, `ORDER_PREPARING`, `ORDER_READY_FOR_PICKUP`, `ORDER_OUT_FOR_DELIVERY`, `ORDER_COMPLETED`, `ORDER_CANCELLED`), real-time low-stock alerts triggered on inventory drops, unread count badge endpoints, and recipient-level isolation. Passing 8/8 tests.
   - `stores`: Multi-tenant anchor model with slug generation, vendor scoping, public discovery endpoints, geospatial Haversine nearby discovery (`/stores/nearby/`) with coordinate validation, bounding-box pre-filtering, distance calculation, non-location fallback, and customer favorite stores (`FavoriteStore`) with unique constraints and tenant isolation, passing tests.
-  - `cards`: Customer draft shopping memo cards enforcing single-store rule, zero premature stock deduction, and atomic transition to submitted order with stock reservation via `POST /cards/{id}/checkout/`, passing tests.
   - `users`: Custom User model with roles (`CUSTOMER`, `VENDOR`, `STAFF`, `SUPERUSER`), email identity, registration, profile retrieval, passing tests.
   - `categories`: Store-scoped category hierarchy with unique constraints per store, passing tests.
-  - `products`: Store-scoped catalog with SKU, Decimal pricing, offers, and public search, passing tests.
+  - `products`: Store-scoped catalog with SKU, Decimal pricing, time-bounded offers (`is_offer_active`), dynamic `effective_price`, and public search, passing tests.
   - `inventory`: Concurrency-safe `StockBalance` with check constraints and `StockLedgerEntry` append-only audit trail using row-level locking (`select_for_update`), passing tests.
-  - `orders`: Order lifecycle state machine (`SUBMITTED -> ACCEPTED -> COMPLETED / CANCELLED`), atomic stock reservation on submission, fulfillment stock conversion, cancellation rollback, idempotency protection, immutable `SalesMemo` receipt generation, and N+1 query optimization via `select_related('customer', 'store')`, passing tests.
   - `purchases`: Store-scoped `Supplier` directory, `Purchase` and `PurchaseItem` models, draft PO workflow with zero premature stock deduction, atomic receipt into inventory via `InventoryService.receive_stock` with audit ledger logging, duplicate receipt rejection, passing tests.
   - `reports`: Vendor analytics engine aggregating gross sales, net product revenue, delivery fee totals, COD collected vs outstanding, inventory low-stock alerts, and procurement costs with store-level tenant authorization, passing tests.
 
@@ -42,8 +44,12 @@ This document is the living single source of truth for feature development statu
 | **11** | **Delivery & Payment Decoupling** | Min order validation, delivery/pickup capability enforcement, decoupled COD payment collection | 🟢 Completed | 🟢 4 Passing | 🟢 4 Passing | 🟢 Enforced |
 | **12** | **Tenant-Safe Caching** | O(1) versioned tenant namespaces, catalog & store caching, write-invalidation, zero-leakage keys | 🟢 Completed | 🟢 4 Passing | 🟢 4 Passing | 🟢 Enforced |
 | **13** | **Deployment Observability** | Container liveness `/health/live/`, deep readiness probe `/health/ready/`, migration check, secret safety | 🟢 Completed | 🟢 6 Passing | 🟢 6 Passing | 🟢 Enforced |
+| **14** | **Order Fulfillment Pipeline** | Full 5-stage lifecycle state machine (`SUBMITTED -> ACCEPTED -> PREPARING -> READY/DISPATCHED -> COMPLETED`), audit timestamps, customer cancellation guards | 🟢 Completed | 🟢 5 Passing | 🟢 5 Passing | 🟢 Enforced |
+| **15** | **Draft Memo Management & Isolation** | Memo item CRUD (`active`, `add_item`, `update_item`, `remove_item`, `clear`), empty store reset, catalog price revalidation at checkout | 🟢 Completed | 🟢 5 Passing | 🟢 5 Passing | 🟢 Enforced |
+| **16** | **Authentication Lifecycle & Profiles** | DRF Token auth, `login`, `logout`, `change-password` with token rotation, isolated `profile` GET/PATCH | 🟢 Completed | 🟢 13 Passing | 🟢 8 Passing | 🟢 Enforced |
+| **17** | **Platform Admin & Store Governance** | Store verification (`verify`, `suspend`, `activate`), unverified checkout/discovery guard, platform overview metrics | 🟢 Completed | 🟢 12 Passing | 🟢 12 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 90 / 90 (100% Passing)*
+*Total Active Automated Tests Passing: 125 / 125 (100% Passing)*
 
 ---
 
@@ -52,12 +58,14 @@ This document is the living single source of truth for feature development statu
 | App / Domain | Test Suite File | Coverage Scope | Status | Last Run Result |
 |---|---|---|:---:|:---:|
 | **Users** | `users/tests/test_auth.py` | User creation, role assignment, registration, profile retrieval | 🟢 Passing | 5 / 5 OK |
+| **Users** | `users/tests/test_user_lifecycle.py` | Login, logout, change-password with token rotation, profile isolation | 🟢 Passing | 13 / 13 OK |
 | **Users** | `users/tests/test_observability.py` | Liveness `/health/live/`, readiness `/health/ready/`, DB/cache/migration checks, secret safety | 🟢 Passing | 6 / 6 OK |
 | **Stores** | `stores/tests/test_stores.py` | Slug generation, store updates, soft deletion | 🟢 Passing | 4 / 4 OK |
 | **Stores** | `stores/tests/test_security.py` | Cross-tenant isolation, customer store creation block, public store discovery | 🟢 Passing | 4 / 4 OK |
 | **Stores** | `stores/tests/test_nearby.py` | Haversine distance, radius filtering, coordinate validation, non-location fallback | 🟢 Passing | 6 / 6 OK |
 | **Stores** | `stores/tests/test_favorites.py` | Idempotent favorites, customer isolation, unfavorite, unauthenticated block | 🟢 Passing | 4 / 4 OK |
 | **Stores** | `stores/tests/test_caching.py` | O(1) versioned invalidation, isolated tenant keys, public detail caching, product write invalidation | 🟢 Passing | 4 / 4 OK |
+| **Stores** | `stores/tests/test_platform_admin.py` | Store verification, suspension/reactivation, cross-tenant admin overview, unverified checkout guard | 🟢 Passing | 12 / 12 OK |
 | **Categories** | `categories/tests/test_categories.py` | Category creation, title capitalization, store association | 🟢 Passing | 1 / 1 OK |
 | **Categories** | `categories/tests/test_security.py` | Cross-tenant category modification IDOR prevention | 🟢 Passing | 3 / 3 OK |
 | **Products** | `products/tests/test_views.py` | Template listing and category product listing | 🟢 Passing | 2 / 2 OK |
@@ -66,10 +74,12 @@ This document is the living single source of truth for feature development statu
 | **Inventory** | `inventory/tests/test_concurrency.py` | Row-locking, negative stock prevention, cross-tenant adjustment block | 🟢 Passing | 3 / 3 OK |
 | **Cards** | `cards/tests/test_cards.py` | Multi-product card, single-store enforcement, stock non-deduction | 🟢 Passing | 3 / 3 OK |
 | **Cards** | `cards/tests/test_checkout.py` | Draft memo checkout to submitted order, inventory reservation, authorization | 🟢 Passing | 4 / 4 OK |
+| **Cards** | `cards/tests/test_memo_management.py` | Draft memo item CRUD (`add`, `update`, `remove`, `clear`), empty reset, IDOR, offer revalidation | 🟢 Passing | 5 / 5 OK |
 | **Orders** | `orders/tests/test_state_machine.py` | Order submission, acceptance, fulfillment, cancellation, Sales Memo | 🟢 Passing | 4 / 4 OK |
 | **Orders** | `orders/tests/test_idempotency.py` | Idempotency deduplication, cross-customer order isolation, cross-vendor isolation | 🟢 Passing | 3 / 3 OK |
 | **Orders** | `orders/tests/test_performance.py` | N+1 query prevention on orders listing and catalog search (`assertNumQueries`) | 🟢 Passing | 2 / 2 OK |
 | **Orders** | `orders/tests/test_delivery_payment.py` | Delivery/pickup store capability enforcement, min order validation, decoupled COD payment collection | 🟢 Passing | 4 / 4 OK |
+| **Orders** | `orders/tests/test_fulfillment_pipeline.py` | Full 5-stage fulfillment pipeline (`prepare`, `dispatch`), timestamps, customer cancel guards | 🟢 Passing | 5 / 5 OK |
 | **Purchases** | `purchases/tests/test_purchases.py` | Supplier creation, draft PO zero-stock impact, atomic receiving, duplicate rejection | 🟢 Passing | 4 / 4 OK |
 | **Purchases** | `purchases/tests/test_security.py` | Cross-vendor PO IDOR block, customer PO access block, unauthenticated block | 🟢 Passing | 4 / 4 OK |
 | **Reports** | `reports/tests/test_reports.py` | Database aggregations for sales, inventory low-stock alerts, procurement spending | 🟢 Passing | 3 / 3 OK |
@@ -90,34 +100,27 @@ This document is the living single source of truth for feature development statu
 - Product offer calculation updated to strictly use Python `Decimal` values, preventing `float` operand type errors.
 - Decimal and cash collection status decoupled from fulfillment lifecycle state machine.
 - Safe O(1) version invalidation eliminates expensive Redis wildcard `KEYS *` operations.
+- Avoided View.dispatch collision by naming custom action `dispatch_order(url_path='dispatch')`.
 
 ---
 
 ## 📝 Changelog & Feature Milestones
 
 ### 2026-10-24
-- Implemented `notifications` app with `Notification` model, in-app feed, Celery async email tasks, order lifecycle hooks (`ORDER_SUBMITTED`, `ORDER_ACCEPTED`, `ORDER_COMPLETED`, `ORDER_CANCELLED`), and automated low-stock vendor alerts.
-- Added geospatial Haversine nearby store discovery (`/stores/nearby/`) with coordinate validation, radius boundaries, and fallback.
-- Added customer favorite store persistence (`FavoriteStore`) with idempotent toggling and tenant isolation.
-- Decoupled delivery & payment collection (`POST /orders/{id}/collect-payment/`), customer phone snapshots, and store capability checks (`min_order_amount`, `pickup_enabled`, `delivery_enabled`).
-- Implemented `CacheService` with O(1) tenant versioning and zero-leakage keys; connected write invalidation across store profiles, categories, and products.
-- Implemented deep health and readiness probes (`/health/live/`, `/health/ready/`) verifying PostgreSQL connection, migration status (`MigrationExecutor`), and cache availability.
-- Executed full test suite across entire SaaS platform: **90 / 90 tests passing**.
-
-
-
-
----
-
-## ⚠️ Known Blockers & Technical Debt
-
-*All identified issues resolved:*
-- `utilities/__init__.py` import error: resolved.
-- `AUTH_USER_MODEL = 'users.User'`: registered and active.
-- PostgreSQL dev container running on port 5431 and connected via `.env`.
-- Relational store multi-tenancy applied across Categories, Products, Cards, Inventory, Orders, Purchases, and Reports.
-- N+1 query vulnerability in order listing eliminated by adding `select_related('customer', 'store')`.
-- Product offer calculation updated to strictly use Python `Decimal` values, preventing `float` operand type errors.
+- Implemented **Phase 14: Order Fulfillment Lifecycle Pipeline**:
+  - Added `preparing_at` and `dispatched_at` timestamps to `Order`.
+  - Added `ORDER_PREPARING`, `ORDER_READY_FOR_PICKUP`, `ORDER_OUT_FOR_DELIVERY` to `NotificationType`.
+  - Implemented `start_preparing` (`POST /orders/{id}/prepare/`) and `dispatch_order` (`POST /orders/{id}/dispatch/`) in `OrderService` and `OrderViewSet`.
+  - Added actor-specific cancellation rules: customer cannot cancel once order preparation begins.
+  - Added `test_fulfillment_pipeline.py` (5/5 passing).
+- Implemented **Phase 15: Draft Memo Item Management & Tenant Security**:
+  - Implemented `Product.is_offer_active` and `Product.effective_price` for dynamic time-bounded pricing.
+  - Enforced `IsAuthenticated` and customer tenant scoping on `CardViewSet`.
+  - Implemented `GET /cards/active/`, `POST /cards/{id}/add-item/`, `POST /cards/{id}/update-item/`, `POST /cards/{id}/remove-item/`, and `POST /cards/{id}/clear/`.
+  - Automated store unbinding when draft memo becomes empty, allowing customer to transition to another store.
+  - Added authoritative catalog price and offer revalidation at checkout in `OrderService.submit_order_from_card`.
+  - Added `test_memo_management.py` (5/5 passing).
+- Executed full test suite across entire SaaS platform: **100 / 100 tests passing**.
 
 ---
 

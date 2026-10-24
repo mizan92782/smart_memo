@@ -74,7 +74,8 @@ class Order(BaseModel):
     idempotency_key = models.CharField(max_length=128, unique=True, null=True, blank=True)
     notes = models.TextField(blank=True, default="")
     accepted_at = models.DateTimeField(null=True, blank=True)
-
+    preparing_at = models.DateTimeField(null=True, blank=True)
+    dispatched_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     cancelled_at = models.DateTimeField(null=True, blank=True)
     paid_at = models.DateTimeField(null=True, blank=True)

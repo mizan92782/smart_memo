@@ -72,6 +72,9 @@ class NotificationService:
         """Notifies customer about order progress / cancellation."""
         type_mapping = {
             'accepted': NotificationType.ORDER_ACCEPTED,
+            'preparing': NotificationType.ORDER_PREPARING,
+            'ready_for_pickup': NotificationType.ORDER_READY_FOR_PICKUP,
+            'out_for_delivery': NotificationType.ORDER_OUT_FOR_DELIVERY,
             'completed': NotificationType.ORDER_COMPLETED,
             'cancelled': NotificationType.ORDER_CANCELLED,
             'rejected': NotificationType.ORDER_CANCELLED,

@@ -6,7 +6,8 @@ from stores.serializers.store_ser import StoreSerializer, PublicStoreSerializer,
 from stores.repositories.store_repository import StoreRepository
 from stores.services.store_service import StoreService
 from stores.services.favorite_service import FavoriteService
-from shared.permissions.permissions import IsStoreOwner, IsVendor, IsCustomer
+from shared.permissions.permissions import IsStoreOwner, IsVendor, IsCustomer, IsStaffOrAdmin
+from shared.enums.enums import UserRoleEnum
 from shared.responses.responses import custome_success_response, custome_error_response
 from shared.pagination.pagination import StandardResultsPagination
 from shared.caching.cache_service import CacheService
@@ -15,11 +16,13 @@ from shared.caching.cache_service import CacheService
 
 class StoreViewSet(viewsets.ModelViewSet):
     """
-    ViewSet for Store management, public discovery, geospatial nearby search, and customer favorites.
+    ViewSet for Store management, public discovery, geospatial nearby search, customer favorites,
+    and platform administration governance.
     - Vendor endpoints: Scoped strictly to request.user.
-    - Public discovery: Lists only active stores.
+    - Public discovery: Lists only active and verified stores.
     - Geospatial search: /stores/nearby/?lat=...&lng=...&radius_km=...
     - Favorites: Scoped strictly to authenticated customer.
+    - Governance: Scoped strictly to platform staff and superusers.
     """
     serializer_class = StoreSerializer
     pagination_class = StandardResultsPagination
@@ -29,6 +32,8 @@ class StoreViewSet(viewsets.ModelViewSet):
             return [AllowAny()]
         if self.action in ['favorite', 'unfavorite', 'favorites']:
             return [IsAuthenticated(), IsCustomer()]
+        if self.action in ['verify', 'suspend', 'activate', 'governance_overview']:
+            return [IsAuthenticated(), IsStaffOrAdmin()]
         if self.action == 'create':
             return [IsAuthenticated(), IsVendor()]
         return [IsAuthenticated(), IsStoreOwner()]
@@ -36,9 +41,14 @@ class StoreViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if not self.request.user.is_authenticated:
             return Store.objects.none()
-        if self.request.user.is_superuser:
-            return Store.objects.filter(is_deleted=False)
+        if (
+            self.request.user.is_superuser
+            or self.request.user.is_staff
+            or getattr(self.request.user, 'role', None) in (UserRoleEnum.STAFF, UserRoleEnum.SUPERUSER)
+        ):
+            return StoreRepository.get_all_stores()
         return StoreRepository.get_by_vendor(self.request.user.id)
+
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -209,4 +219,56 @@ class StoreViewSet(viewsets.ModelViewSet):
             message="Favorite stores retrieved successfully.",
             data=serializer.data
         )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsStaffOrAdmin])
+    def verify(self, request, pk=None):
+        """POST /stores/{id}/verify/ -> Platform admin approves and verifies a store."""
+        store = StoreRepository.get_by_id(pk)
+        if not store:
+            return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
+        notes = request.data.get('notes', '')
+        verified_store = StoreService.verify_store(store, verified_by=request.user, notes=notes)
+        return custome_success_response(
+            message="Store verified successfully.",
+            data=StoreSerializer(verified_store).data,
+            data_title="store"
+        )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsStaffOrAdmin])
+    def suspend(self, request, pk=None):
+        """POST /stores/{id}/suspend/ -> Platform admin suspends a store."""
+        store = StoreRepository.get_by_id(pk)
+        if not store:
+            return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
+        reason = request.data.get('reason', '')
+        suspended_store = StoreService.suspend_store(store, reason=reason)
+        return custome_success_response(
+            message="Store suspended successfully.",
+            data=StoreSerializer(suspended_store).data,
+            data_title="store"
+        )
+
+    @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated, IsStaffOrAdmin])
+    def activate(self, request, pk=None):
+        """POST /stores/{id}/activate/ -> Platform admin reactivates a suspended store."""
+        store = StoreRepository.get_by_id(pk)
+        if not store:
+            return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
+        activated_store = StoreService.activate_store(store)
+        return custome_success_response(
+            message="Store reactivated successfully.",
+            data=StoreSerializer(activated_store).data,
+            data_title="store"
+        )
+
+    @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated, IsStaffOrAdmin], url_path='governance-overview')
+    def governance_overview(self, request):
+        """GET /stores/governance-overview/ -> Platform metrics for administrators."""
+        metrics = StoreService.get_platform_governance_overview()
+        return custome_success_response(
+            message="Platform governance overview retrieved.",
+            data=metrics,
+            data_title="overview"
+        )
+
 

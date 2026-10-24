@@ -20,3 +20,10 @@ description: Order lifecycle, status transitions, acceptance, cancellation and f
 - Concurrent acceptance/cancellation does not double-reserve or double-release stock.
 - Duplicate submission and event processing are idempotent.
 - Every important transition is auditable.
+
+## Verified Implementation Pattern
+- **Finite State Machine**: Strict 5-step pipeline: `SUBMITTED` -> `ACCEPTED` (`POST /orders/{id}/accept/`) -> `PREPARING` (`POST /orders/{id}/prepare/`) -> `READY_FOR_PICKUP` or `OUT_FOR_DELIVERY` (`POST /orders/{id}/dispatch/`) -> `COMPLETED` (`POST /orders/{id}/fulfill/`).
+- **Audit Timestamps**: Every step permanently records transition timestamps: `accepted_at`, `preparing_at`, `dispatched_at`, `completed_at`, `cancelled_at`, and `paid_at`.
+- **Actor Cancellation Boundaries**: Customers can cancel only when the order is `SUBMITTED` or `ACCEPTED` before preparation begins. Once in `PREPARING`, customer cancellation is rejected (400 Bad Request) to protect vendor prep investment. Vendors retain authority to reject/cancel at any pre-completion stage, atomically releasing reserved stock via `InventoryService.release_reserved_stock`.
+- **Framework Action Naming**: Action method is named `dispatch_order` with `url_path='dispatch'` to avoid overriding Django's core `View.dispatch` method.
+- **Automated Lifecycle Notifications**: Customer receives real-time in-app notifications for `ORDER_ACCEPTED`, `ORDER_PREPARING`, `ORDER_READY_FOR_PICKUP`, `ORDER_OUT_FOR_DELIVERY`, `ORDER_COMPLETED`, and `ORDER_CANCELLED`.

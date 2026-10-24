@@ -64,7 +64,7 @@ class CardItem(BaseModel):
 
     def save(self, *args, **kwargs):
         if not self.unit_price:
-            self.unit_price = self.product.offered_price if self.product.offer else self.product.price
+            self.unit_price = self.product.effective_price
         super().save(*args, **kwargs)
 
     def __str__(self):

@@ -35,6 +35,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'delivery_address', 'delivery_fee', 'subtotal',
             'total_amount', 'payment_method', 'payment_status',
             'idempotency_key', 'notes', 'accepted_at',
+            'preparing_at', 'dispatched_at',
             'completed_at', 'cancelled_at', 'paid_at',
             'payment_collected_by', 'customer_phone_snapshot',
             'items', 'sales_memo', 'created_at'
@@ -43,6 +44,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'id', 'order_number', 'customer', 'customer_email',
             'store_name', 'status', 'delivery_fee', 'subtotal',
             'total_amount', 'payment_status', 'accepted_at',
+            'preparing_at', 'dispatched_at',
             'completed_at', 'cancelled_at', 'paid_at',
             'payment_collected_by', 'customer_phone_snapshot',
             'items', 'sales_memo', 'created_at'

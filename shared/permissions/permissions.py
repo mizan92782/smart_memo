@@ -5,6 +5,7 @@ All custom permission classes should live here.
 Import from here rather than defining permissions in individual apps.
 """
 from rest_framework.permissions import BasePermission
+from shared.enums.enums import UserRoleEnum
 
 
 class IsAdmin(BasePermission):
@@ -18,7 +19,7 @@ class IsAdmin(BasePermission):
         return bool(
             request.user
             and request.user.is_authenticated
-            and request.user.is_superuser
+            and (request.user.is_superuser or getattr(request.user, 'role', None) == UserRoleEnum.SUPERUSER)
         )
 
 
@@ -32,8 +33,13 @@ class IsStaffOrAdmin(BasePermission):
         return bool(
             request.user
             and request.user.is_authenticated
-            and (request.user.is_staff or request.user.is_superuser)
+            and (
+                request.user.is_staff
+                or request.user.is_superuser
+                or getattr(request.user, 'role', None) in (UserRoleEnum.STAFF, UserRoleEnum.SUPERUSER)
+            )
         )
+
 
 
 class IsOwner(BasePermission):

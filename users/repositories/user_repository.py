@@ -7,6 +7,7 @@ Single source of truth for User DB interactions.
 from typing import Optional
 from django.contrib.auth import authenticate
 from django.db.models import QuerySet
+from rest_framework.authtoken.models import Token
 from users.models.user_mod import User
 
 
@@ -45,6 +46,23 @@ class UserRepository:
         user.save(update_fields=['password'])
 
     @staticmethod
+    def get_or_create_token(user: User) -> Token:
+        """Retrieve existing or generate new auth token for user."""
+        token, _ = Token.objects.get_or_create(user=user)
+        return token
+
+    @staticmethod
+    def revoke_token(user: User) -> None:
+        """Delete active auth tokens for user."""
+        Token.objects.filter(user=user).delete()
+
+    @staticmethod
+    def rotate_token(user: User) -> Token:
+        """Invalidate old tokens and issue a fresh auth token."""
+        Token.objects.filter(user=user).delete()
+        return Token.objects.create(user=user)
+
+    @staticmethod
     def list_users() -> QuerySet[User]:
         """List all active users."""
         return User.objects.filter(is_active=True).select_related('profile')
@@ -53,3 +71,4 @@ class UserRepository:
     def delete_user(user: User) -> None:
         """Delete user account."""
         user.delete()
+

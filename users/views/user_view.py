@@ -5,7 +5,15 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from users.models.user_mod import User
-from users.serializers.user_ser import UserSerializer, RegisterSerializer, LoginSerializer
+from users.models.profile_mod import Profile
+from users.serializers.user_ser import (
+    UserSerializer,
+    RegisterSerializer,
+    LoginSerializer,
+    ChangePasswordSerializer,
+    ProfileUpdateSerializer,
+    ProfileSerializer,
+)
 from users.services.user_service import UserService
 from users.repositories.user_repository import UserRepository
 from shared.responses.responses import custome_success_response, custome_error_response
@@ -36,6 +44,45 @@ class UserViewSet(viewsets.GenericViewSet):
             status_code=status.HTTP_201_CREATED
         )
 
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    def login(self, request):
+        serializer = LoginSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data['email']
+        password = serializer.validated_data['password']
+
+        user, token = UserService.login_user(email=email, password=password, request=request)
+        return custome_success_response(
+            message="Login successful.",
+            data={
+                "token": token,
+                "user": UserSerializer(user).data,
+            },
+            status_code=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated])
+    def logout(self, request):
+        UserService.logout_user(request.user, request=request)
+        return custome_success_response(
+            message="Logout successful.",
+            status_code=status.HTTP_200_OK
+        )
+
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='change-password')
+    def change_password(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        old_password = serializer.validated_data['old_password']
+        new_password = serializer.validated_data['new_password']
+
+        _, new_token = UserService.change_password(request.user, old_password, new_password)
+        return custome_success_response(
+            message="Password changed successfully.",
+            data={"token": new_token},
+            status_code=status.HTTP_200_OK
+        )
+
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):
         return custome_success_response(
@@ -43,3 +90,23 @@ class UserViewSet(viewsets.GenericViewSet):
             data=UserSerializer(request.user).data,
             data_title="user"
         )
+
+    @action(detail=False, methods=['get', 'patch'], permission_classes=[IsAuthenticated])
+    def profile(self, request):
+        if request.method == 'GET':
+            profile, _ = Profile.objects.get_or_create(user=request.user)
+            return custome_success_response(
+                message="Profile retrieved.",
+                data=ProfileSerializer(profile).data,
+                data_title="profile"
+            )
+
+        serializer = ProfileUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        profile = UserService.update_profile(request.user, **serializer.validated_data)
+        return custome_success_response(
+            message="Profile updated successfully.",
+            data=ProfileSerializer(profile).data,
+            data_title="profile"
+        )
+

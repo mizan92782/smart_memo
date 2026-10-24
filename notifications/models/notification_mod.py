@@ -7,6 +7,9 @@ from stores.models.store_mod import Store
 class NotificationType(models.TextChoices):
     ORDER_SUBMITTED = 'order_submitted', 'Order Submitted'
     ORDER_ACCEPTED = 'order_accepted', 'Order Accepted'
+    ORDER_PREPARING = 'order_preparing', 'Order Preparing'
+    ORDER_READY_FOR_PICKUP = 'order_ready_for_pickup', 'Ready for Pickup'
+    ORDER_OUT_FOR_DELIVERY = 'order_out_for_delivery', 'Out for Delivery'
     ORDER_COMPLETED = 'order_completed', 'Order Completed'
     ORDER_CANCELLED = 'order_cancelled', 'Order Cancelled'
     LOW_STOCK_ALERT = 'low_stock_alert', 'Low Stock Alert'

@@ -81,6 +81,26 @@ class Product(BaseModel):
     def is_in_stock(self) -> bool:
         return self.stock > 0
 
+    def is_offer_active(self, now=None) -> bool:
+        """Determines if the product offer is currently valid and active."""
+        if not self.offer:
+            return False
+        if now is None:
+            from django.utils import timezone
+            now = timezone.now()
+        if self.offer_start_date and now < self.offer_start_date:
+            return False
+        if self.offer_end_date and now > self.offer_end_date:
+            return False
+        return True
+
+    @property
+    def effective_price(self) -> Decimal:
+        """Authoritative current selling price considering offer active window."""
+        if self.is_offer_active():
+            return self.offered_price
+        return self.price
+
     def save(self, *args, **kwargs):
         self.name = self.name.title()
 

@@ -19,7 +19,8 @@ class CardItemSerializer(serializers.ModelSerializer):
 class CardSerializer(serializers.ModelSerializer):
     items = CardItemSerializer(many=True, read_only=True)
     total_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    store_name = serializers.CharField(source='store.name', read_only=True)
 
     class Meta:
         model = Card
-        fields = ['id', 'user', 'title', 'is_completed', 'created_at', 'items', 'total_price']
+        fields = ['id', 'user', 'store', 'store_name', 'title', 'is_completed', 'created_at', 'items', 'total_price']

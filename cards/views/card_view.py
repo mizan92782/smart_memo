@@ -12,30 +12,120 @@ from shared.responses.responses import custome_success_response, custome_error_r
 
 
 class CardViewSet(viewsets.ModelViewSet):
-    """ViewSet for Card (Memo/Cart) CRUD and item operations."""
+    """ViewSet for Card (Draft Memo) CRUD, item operations, and checkout."""
     serializer_class = CardSerializer
-    permission_classes = [AllowAny]
+    permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if self.request.user.is_authenticated:
-            return CardRepository.get_by_user(self.request.user.id)
-        return Card.objects.all()
+        user = self.request.user
+        if not user or not user.is_authenticated:
+            return Card.objects.none()
+        return CardRepository.get_by_user(user.id)
 
-    @action(detail=True, methods=['post'])
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+
+    def retrieve(self, request, *args, **kwargs):
+        card = self.get_object()
+        return custome_success_response(
+            message="Shopping memo retrieved.",
+            data=CardSerializer(card).data
+        )
+
+    @action(detail=False, methods=['get'])
+    def active(self, request):
+        """Retrieve or initialize the active draft memo for the customer."""
+        card = CardService.get_or_create_active_memo(request.user)
+        return custome_success_response(
+            message="Active draft shopping memo retrieved.",
+            data=CardSerializer(card).data
+        )
+
+    @action(detail=True, methods=['post'], url_path='add-item')
     def add_item(self, request, pk=None):
+        """Add product to draft memo enforcing single-store rule and availability."""
+        card = self.get_object()
         product_id = request.data.get('product_id')
         quantity = request.data.get('quantity', 1)
         if not product_id:
-            return custome_error_response("product_id is required.")
+            return custome_error_response("product_id is required.", status_code=status.HTTP_400_BAD_REQUEST)
         try:
-            item = CardService.add_product_to_card(card_id=pk, product_id=product_id, quantity=quantity)
+            item = CardService.add_product_to_card(
+                card_id=card.id,
+                product_id=product_id,
+                quantity=quantity,
+                actor=request.user
+            )
             return custome_success_response(
                 message="Item added to card successfully.",
-                data={'item_id': item.id, 'quantity': item.quantity},
+                data={
+                    'item_id': item.id,
+                    'quantity': str(item.quantity),
+                    'unit_price': str(item.unit_price),
+                    'subtotal': str(item.subtotal)
+                },
                 status_code=status.HTTP_201_CREATED
             )
-        except Exception as exc:
-            return custome_error_response(str(exc))
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='update-item')
+    def update_item(self, request, pk=None):
+        """Update an item quantity within the draft memo."""
+        card = self.get_object()
+        item_id = request.data.get('item_id')
+        quantity = request.data.get('quantity')
+        if not item_id or quantity is None:
+            return custome_error_response("item_id and quantity are required.", status_code=status.HTTP_400_BAD_REQUEST)
+        try:
+            item = CardService.update_item_quantity(
+                card_id=card.id,
+                item_id=item_id,
+                quantity=quantity,
+                actor=request.user
+            )
+            return custome_success_response(
+                message="Item quantity updated.",
+                data={
+                    'item_id': item.id,
+                    'quantity': str(item.quantity),
+                    'unit_price': str(item.unit_price),
+                    'subtotal': str(item.subtotal)
+                }
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='remove-item')
+    def remove_item(self, request, pk=None):
+        """Remove an item from draft memo. Resets store if memo becomes empty."""
+        card = self.get_object()
+        item_id = request.data.get('item_id')
+        if not item_id:
+            return custome_error_response("item_id is required.", status_code=status.HTTP_400_BAD_REQUEST)
+        try:
+            CardService.remove_item_from_card(
+                card_id=card.id,
+                item_id=item_id,
+                actor=request.user
+            )
+            return custome_success_response(
+                message="Item removed from shopping memo."
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def clear(self, request, pk=None):
+        """Remove all items from draft shopping memo and reset store binding."""
+        card = self.get_object()
+        try:
+            CardService.clear_card(card_id=card.id, actor=request.user)
+            return custome_success_response(
+                message="Shopping memo cleared."
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], permission_classes=[IsAuthenticated])
     def checkout(self, request, pk=None):

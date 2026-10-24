@@ -66,16 +66,15 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 
 ## 2. Authentication & User APIs
 
-### `POST /api/v1/auth/register/`
+### `POST /users/register/`
 - **Description**: Registers a new customer or vendor.
-- **Permissions**: Public (AllowAny). Throttled: 5/min.
+- **Permissions**: Public (AllowAny).
 - **Request Body**:
 ```json
 {
   "email": "vendor@store.com",
   "password": "StrongPassword123!",
   "full_name": "Mizanur Rahman",
-  "phone_number": "+8801700000000",
   "role": "VENDOR"
 }
 ```
@@ -83,24 +82,29 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 ```json
 {
   "success": true,
-  "message": "Account created successfully.",
+  "message": "User registered successfully.",
   "data": {
-    "id": 1,
-    "email": "vendor@store.com",
-    "role": "VENDOR",
-    "profile": {
-      "full_name": "Mizanur Rahman",
-      "phone_number": "+8801700000000",
-      "address": ""
+    "user": {
+      "id": 1,
+      "email": "vendor@store.com",
+      "role": "VENDOR",
+      "is_active": true,
+      "created_at": "2026-10-24T14:30:00Z",
+      "profile": {
+        "full_name": "Mizanur Rahman",
+        "phone_number": "",
+        "address": "",
+        "avatar": null
+      }
     }
   },
   "errors": null
 }
 ```
 
-### `POST /api/v1/auth/login/`
-- **Description**: Authenticates user and issues access and refresh tokens.
-- **Permissions**: Public (AllowAny). Throttled: 5/min.
+### `POST /users/login/`
+- **Description**: Authenticates user against credentials and issues DRF auth token.
+- **Permissions**: Public (AllowAny).
 - **Request Body**:
 ```json
 {
@@ -114,21 +118,112 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
   "success": true,
   "message": "Login successful.",
   "data": {
-    "access_token": "eyJhbGciOi...",
-    "refresh_token": "eyJhbGciOi...",
+    "token": "9944b09199c62bcf9418ad846dd0e4bbdfc6ee4b",
     "user": {
       "id": 1,
       "email": "vendor@store.com",
-      "role": "VENDOR"
+      "role": "VENDOR",
+      "is_active": true,
+      "created_at": "2026-10-24T14:30:00Z",
+      "profile": {
+        "full_name": "Mizanur Rahman",
+        "phone_number": "",
+        "address": "",
+        "avatar": null
+      }
     }
   },
   "errors": null
 }
 ```
 
-### `GET /api/v1/users/profile/`
-- **Description**: Fetches current user profile and store memberships.
+### `POST /users/logout/`
+- **Description**: Revokes the active auth token and invalidates the session.
+- **Permissions**: IsAuthenticated (`Authorization: Token <token>`).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Logout successful.",
+  "data": null,
+  "errors": null
+}
+```
+
+### `POST /users/change-password/`
+- **Description**: Updates user password after validating existing credentials and rotates auth token.
+- **Permissions**: IsAuthenticated (`Authorization: Token <token>`).
+- **Request Body**:
+```json
+{
+  "old_password": "StrongPassword123!",
+  "new_password": "BrandNewPassword999!"
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Password changed successfully.",
+  "data": {
+    "token": "new-rotated-token-key-12345"
+  },
+  "errors": null
+}
+```
+
+### `GET /users/me/`
+- **Description**: Retrieves authenticated user account details and profile.
 - **Permissions**: IsAuthenticated.
+
+### `GET /users/profile/`
+- **Description**: Fetches current user profile details.
+- **Permissions**: IsAuthenticated.
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Profile retrieved.",
+  "data": {
+    "profile": {
+      "full_name": "Mizanur Rahman",
+      "phone_number": "+8801700000000",
+      "address": "House 12, Road 4, Uttara, Dhaka",
+      "avatar": null
+    }
+  },
+  "errors": null
+}
+```
+
+### `PATCH /users/profile/`
+- **Description**: Partially updates current user's profile with strict object isolation.
+- **Permissions**: IsAuthenticated.
+- **Request Body**:
+```json
+{
+  "full_name": "Mizanur Rahman",
+  "phone_number": "+8801700000000",
+  "address": "House 12, Road 4, Uttara, Dhaka"
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Profile updated successfully.",
+  "data": {
+    "profile": {
+      "full_name": "Mizanur Rahman",
+      "phone_number": "+8801700000000",
+      "address": "House 12, Road 4, Uttara, Dhaka",
+      "avatar": null
+    }
+  },
+  "errors": null
+}
+```
+
 
 ---
 
@@ -156,14 +251,124 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 }
 ```
 
-### `GET /api/v1/stores/public/`
-- **Description**: Discover nearby stores within a radius.
+### `GET /stores/public/`
+- **Description**: Discover active and verified stores.
 - **Permissions**: Public.
-- **Query Parameters**:
-  - `lat` (float, required for distance ranking): e.g. `23.8759`
-  - `lng` (float, required for distance ranking): e.g. `90.3795`
-  - `radius_km` (float, optional, default: 10): e.g. `5`
-  - `search` (string, optional): Search by store name
+
+### `GET /stores/nearby/`
+- **Description**: Geospatial Haversine store discovery with radius filter and coordinate bounds check.
+- **Permissions**: Public.
+
+### `POST /stores/{id}/verify/`
+- **Description**: Platform admin approves and verifies a store for public discovery and ordering.
+- **Permissions**: IsStaffOrAdmin (Staff / Superuser).
+- **Request Body**:
+```json
+{
+  "notes": "Trade license and business documentation verified."
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Store verified successfully.",
+  "data": {
+    "store": {
+      "id": 1,
+      "name": "Green Valley Grocery",
+      "is_active": true,
+      "is_verified": true,
+      "verified_at": "2026-10-24T14:40:00Z",
+      "verification_notes": "Trade license and business documentation verified."
+    }
+  },
+  "errors": null
+}
+```
+
+### `POST /stores/{id}/suspend/`
+- **Description**: Platform admin suspends a store, immediately disabling public discovery and orders.
+- **Permissions**: IsStaffOrAdmin (Staff / Superuser).
+- **Request Body**:
+```json
+{
+  "reason": "Terms of service violation."
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Store suspended successfully.",
+  "data": {
+    "store": {
+      "id": 1,
+      "name": "Green Valley Grocery",
+      "is_active": false,
+      "is_verified": true,
+      "verification_notes": "Terms of service violation."
+    }
+  },
+  "errors": null
+}
+```
+
+### `POST /stores/{id}/activate/`
+- **Description**: Platform admin reactivates a suspended store.
+- **Permissions**: IsStaffOrAdmin (Staff / Superuser).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Store reactivated successfully.",
+  "data": {
+    "store": {
+      "id": 1,
+      "name": "Green Valley Grocery",
+      "is_active": true,
+      "is_verified": true
+    }
+  },
+  "errors": null
+}
+```
+
+### `GET /stores/governance-overview/`
+- **Description**: Aggregated platform-wide metrics (stores breakdown, user distribution, GMV, orders status).
+- **Permissions**: IsStaffOrAdmin (Staff / Superuser).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Platform governance overview retrieved.",
+  "data": {
+    "overview": {
+      "stores": {
+        "total": 45,
+        "active": 42,
+        "verified": 40,
+        "unverified": 5,
+        "suspended": 3
+      },
+      "users": {
+        "total_vendors": 38,
+        "total_customers": 1520,
+        "total_staff": 4
+      },
+      "orders": {
+        "total": 840,
+        "completed": 760,
+        "active": 50,
+        "cancelled": 30,
+        "gross_merchandise_volume": "142580.00"
+      }
+    }
+  },
+  "errors": null
+}
+```
+
 
 ---
 
@@ -281,35 +486,49 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 
 ## 8. Orders & Fulfillment APIs
 
-### `POST /api/v1/orders/submit/`
+### `POST /orders/submit/`
 - **Description**: Submits the draft memo into a confirmed customer order. Atomically reserves stock.
-- **Permissions**: IsCustomer.
+- **Permissions**: `IsAuthenticated`.
 - **Request Body**:
 ```json
 {
-  "idempotency_key": "c3f8d7b2-8419-4b2a-a991-3818e5e69bf1",
-  "fulfillment_type": "DELIVERY",
+  "card_id": 5,
+  "fulfillment_type": "delivery",
   "delivery_address": "House 5, Road 2, Sector 4, Uttara, Dhaka",
-  "payment_method": "COD",
-  "notes": "Ring doorbell twice please."
+  "notes": "Ring doorbell twice please.",
+  "idempotency_key": "c3f8d7b2-8419-4b2a-a991-3818e5e69bf1"
 }
 ```
 
-### `POST /api/v1/orders/{id}/fulfill/`
-- **Description**: Marks order as fulfilled and completed. Deducts reserved stock and finalizes sales receipt.
-- **Permissions**: IsStoreOwner.
+### `POST /orders/{id}/accept/`
+- **Description**: Vendor accepts the submitted customer order. Stamps `accepted_at`.
+- **Permissions**: `IsAuthenticated` (Store Vendor only).
+
+### `POST /orders/{id}/prepare/`
+- **Description**: Vendor moves accepted order into preparation status. Stamps `preparing_at`.
+- **Permissions**: `IsAuthenticated` (Store Vendor only).
+
+### `POST /orders/{id}/dispatch/`
+- **Description**: Vendor marks order as `ready_for_pickup` (if pickup) or `out_for_delivery` (if delivery). Stamps `dispatched_at` and notifies customer.
+- **Permissions**: `IsAuthenticated` (Store Vendor only).
+
+### `POST /orders/{id}/fulfill/`
+- **Description**: Marks order as completed. Deducts reserved stock from inventory ledger, stamps `completed_at`, marks payment collected if requested, and issues immutable `SalesMemo`.
+- **Permissions**: `IsAuthenticated` (Store Vendor only).
 - **Request Body**:
 ```json
 {
-  "payment_collected": true,
-  "amount_collected": "550.00",
-  "notes": "Delivered by store rider"
+  "payment_collected": true
 }
 ```
 
-### `GET /api/v1/orders/{id}/sales-memo/`
+### `POST /orders/{id}/cancel/`
+- **Description**: Cancels order and atomically returns reserved inventory back to available stock. Customers can only cancel while order is in `submitted` or `accepted` status before preparation begins. Vendors can reject/cancel at any pre-completion stage.
+- **Permissions**: `IsAuthenticated` (Order Customer or Store Vendor).
+
+### `GET /orders/{id}/sales_memo/`
 - **Description**: Download or view finalized immutable sales memo receipt.
-- **Permissions**: IsOrderCustomer OR IsStoreOwner.
+- **Permissions**: `IsAuthenticated` (Order Customer or Store Vendor).
 
 ---
 
@@ -411,11 +630,52 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 
 ---
 
-## 12. Draft Shopping Memo (Card) Checkout
+## 12. Draft Shopping Memo (Card) APIs
+
+### `GET /cards/active/`
+- **Description**: Returns or auto-initializes the authenticated customer's current active draft shopping memo.
+- **Permissions**: `IsAuthenticated`.
+- **Response**: `200 OK` with `Card` object containing `items`, `store`, `store_name`, and `total_price`.
+
+### `POST /cards/{id}/add-item/`
+- **Description**: Adds a product to draft memo. Enforces single-store rule and zero premature stock movement.
+- **Permissions**: `IsAuthenticated` (Card owner only).
+- **Request Body**:
+```json
+{
+  "product_id": 12,
+  "quantity": "2.000"
+}
+```
+
+### `POST /cards/{id}/update-item/`
+- **Description**: Updates the quantity of an item within the draft memo and refreshes with current effective price.
+- **Permissions**: `IsAuthenticated` (Card owner only).
+- **Request Body**:
+```json
+{
+  "item_id": 4,
+  "quantity": "3.000"
+}
+```
+
+### `POST /cards/{id}/remove-item/`
+- **Description**: Removes an item from the draft memo. If memo becomes empty, automatically unbinds the store context so customer can pick from another store.
+- **Permissions**: `IsAuthenticated` (Card owner only).
+- **Request Body**:
+```json
+{
+  "item_id": 4
+}
+```
+
+### `POST /cards/{id}/clear/`
+- **Description**: Empties all items from the draft memo and unbinds store.
+- **Permissions**: `IsAuthenticated` (Card owner only).
 
 ### `POST /cards/{id}/checkout/`
-- **Description**: Converts customer's draft shopping memo card into a submitted order with atomic inventory reservation.
-- **Permissions**: `IsAuthenticated` (Must be the card owner).
+- **Description**: Converts customer's draft shopping memo card into a submitted order with atomic inventory reservation and catalog price/offer revalidation.
+- **Permissions**: `IsAuthenticated` (Card owner only).
 - **Request Body**:
 ```json
 {

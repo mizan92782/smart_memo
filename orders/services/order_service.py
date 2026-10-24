@@ -38,11 +38,25 @@ class OrderService:
         if not card.store:
             raise ValueError("Shopping memo does not belong to any store.")
 
+        if not card.store.is_active or not getattr(card.store, 'is_verified', True):
+            raise ValueError(f"Store '{card.store.name}' is inactive or pending administrative verification.")
+
         # Store fulfillment policy validation
         if fulfillment_type == FulfillmentType.PICKUP and not card.store.pickup_enabled:
             raise ValueError(f"Store '{card.store.name}' does not support in-store pickup.")
         if fulfillment_type == FulfillmentType.DELIVERY and not card.store.delivery_enabled:
             raise ValueError(f"Store '{card.store.name}' does not support home delivery.")
+
+        # Authoritative catalog price and product availability revalidation
+        for item in items:
+            if not item.product or item.product.is_deleted or not item.product.is_active:
+                prod_name = item.product.name if item.product else "Selected item"
+                raise ValueError(f"Product '{prod_name}' is no longer available in catalog.")
+
+            fresh_price = item.product.effective_price
+            if item.unit_price != fresh_price:
+                item.unit_price = fresh_price
+                item.save(update_fields=['unit_price', 'updated_at'])
 
         subtotal = sum(item.subtotal for item in items)
 
@@ -126,6 +140,48 @@ class OrderService:
 
         return order
 
+    @staticmethod
+    def start_preparing(order: Order, actor) -> Order:
+        """Vendor moves order into preparation."""
+        valid_statuses = [OrderStatus.ACCEPTED, OrderStatus.SUBMITTED]
+        if order.status not in valid_statuses:
+            raise ValueError(f"Cannot start preparing order from status '{order.status}'.")
+
+        order.status = OrderStatus.PREPARING
+        order.preparing_at = timezone.now()
+        fields_to_update = ['status', 'preparing_at', 'updated_at']
+        if not order.accepted_at:
+            order.accepted_at = timezone.now()
+            fields_to_update.append('accepted_at')
+
+        order.save(update_fields=fields_to_update)
+
+        from notifications.services.notification_service import NotificationService
+        NotificationService.notify_order_status_change(order, OrderStatus.PREPARING)
+
+        return order
+
+    @staticmethod
+    def dispatch_order(order: Order, actor) -> Order:
+        """
+        Vendor marks order as ready for customer pickup or dispatched for home delivery.
+        """
+        valid_statuses = [OrderStatus.PREPARING, OrderStatus.ACCEPTED]
+        if order.status not in valid_statuses:
+            raise ValueError(f"Cannot dispatch/ready order from status '{order.status}'.")
+
+        if order.fulfillment_type == FulfillmentType.PICKUP:
+            order.status = OrderStatus.READY_FOR_PICKUP
+        else:
+            order.status = OrderStatus.OUT_FOR_DELIVERY
+
+        order.dispatched_at = timezone.now()
+        order.save(update_fields=['status', 'dispatched_at', 'updated_at'])
+
+        from notifications.services.notification_service import NotificationService
+        NotificationService.notify_order_status_change(order, order.status)
+
+        return order
 
     @staticmethod
     @transaction.atomic
@@ -166,7 +222,6 @@ class OrderService:
             fields_to_update.extend(['payment_status', 'paid_at', 'payment_collected_by'])
         order.save(update_fields=fields_to_update)
 
-
         # Generate finalized sales memo
         items_snapshot = [
             {
@@ -202,6 +257,14 @@ class OrderService:
             raise ValueError("Cannot cancel an already completed order.")
         if order.status in [OrderStatus.CANCELLED, OrderStatus.REJECTED]:
             return order
+
+        # Customer cancellation restrictions
+        if actor == order.customer and not getattr(actor, 'is_superuser', False):
+            if order.status not in [OrderStatus.SUBMITTED, OrderStatus.ACCEPTED]:
+                raise ValueError(
+                    f"Customers cannot cancel an order once preparation or fulfillment has started "
+                    f"(current status: '{order.status}'). Please contact the store."
+                )
 
         for item in order.items.select_related('product').all():
             if item.product:

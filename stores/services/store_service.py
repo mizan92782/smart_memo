@@ -59,6 +59,7 @@ class StoreService:
 
         candidates = Store.objects.filter(
             is_active=True,
+            is_verified=True,
             is_deleted=False,
             latitude__isnull=False,
             longitude__isnull=False,
@@ -98,4 +99,37 @@ class StoreService:
         store.is_active = False
         store.save(update_fields=['is_active'])
         return store
+
+    @staticmethod
+    def verify_store(store: Store, verified_by=None, notes: str = "") -> Store:
+        """Approve and verify a store for platform visibility and orders."""
+        from shared.caching.cache_service import CacheService
+        updated = StoreRepository.verify_store(store, verified_by=verified_by, notes=notes)
+        CacheService.invalidate_store_profile(store.id)
+        CacheService.invalidate_catalog(store.id)
+        return updated
+
+    @staticmethod
+    def suspend_store(store: Store, reason: str = "") -> Store:
+        """Administrative suspension of a store."""
+        from shared.caching.cache_service import CacheService
+        updated = StoreRepository.suspend_store(store, reason=reason)
+        CacheService.invalidate_store_profile(store.id)
+        CacheService.invalidate_catalog(store.id)
+        return updated
+
+    @staticmethod
+    def activate_store(store: Store) -> Store:
+        """Administrative reactivation of a suspended store."""
+        from shared.caching.cache_service import CacheService
+        updated = StoreRepository.activate_store(store)
+        CacheService.invalidate_store_profile(store.id)
+        CacheService.invalidate_catalog(store.id)
+        return updated
+
+    @staticmethod
+    def get_platform_governance_overview() -> dict:
+        """Retrieve aggregated platform metrics."""
+        return StoreRepository.get_platform_metrics()
+
 

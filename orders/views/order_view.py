@@ -17,6 +17,8 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_queryset(self):
         user = self.request.user
+        if not user or not user.is_authenticated:
+            return Order.objects.none()
         if hasattr(user, 'role') and user.role == 'vendor':
             return (
                 Order.objects
@@ -73,6 +75,39 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
             order = OrderService.accept_order(order=order, actor=request.user)
             return custome_success_response(
                 message="Order accepted.",
+                data=OrderSerializer(order).data
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'])
+    def prepare(self, request, pk=None):
+        """Vendor moves order into preparation."""
+        order = self.get_object()
+        if order.store.vendor != request.user and not request.user.is_superuser:
+            return custome_error_response("You do not own the store for this order.", status_code=status.HTTP_403_FORBIDDEN)
+
+        try:
+            order = OrderService.start_preparing(order=order, actor=request.user)
+            return custome_success_response(
+                message="Order is now in preparation.",
+                data=OrderSerializer(order).data
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='dispatch')
+    def dispatch_order(self, request, pk=None):
+        """Vendor marks order as ready for pickup or dispatched for delivery."""
+        order = self.get_object()
+        if order.store.vendor != request.user and not request.user.is_superuser:
+            return custome_error_response("You do not own the store for this order.", status_code=status.HTTP_403_FORBIDDEN)
+
+        try:
+            order = OrderService.dispatch_order(order=order, actor=request.user)
+            msg = "Order ready for customer pickup." if order.status == 'ready_for_pickup' else "Order dispatched for home delivery."
+            return custome_success_response(
+                message=msg,
                 data=OrderSerializer(order).data
             )
         except ValueError as exc:
