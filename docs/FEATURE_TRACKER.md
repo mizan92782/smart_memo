@@ -214,8 +214,14 @@ This document is the living single source of truth for feature development statu
   - Integrated in-store physical shelf barcode scanner in customer draft shopping memos: `POST /cards/{id}/scan-add/` allowing customers to scan physical barcodes off store shelves to automatically add or increment line items in their draft memo.
   - Implemented standalone vector SVG QR code generation for walk-in verification: `Order.generate_qr_code_svg()`, `GET /orders/{id}/qr-code/`, and embedded data URI `qr_code_data_uri` in `OrderSerializer` for instant optical scanning at counter POS.
   - Implemented 1-tap quick reorder endpoint `POST /orders/{id}/reorder/` cloning past order items into an active draft shopping memo with live product availability, store status, and pricing re-validation.
-  - Added automated test suites: `test_barcode_scan_add.py` (4/4 passing) and `test_walkin_qr_and_reorder.py` (3/3 passing).
-- Executed full test suite across entire SaaS platform: **231 / 231 tests passing (100% pass rate)**.
+- Implemented **Phase 31: In-Store Shelf Navigation, Aisle Route Organization & Basket Picking Checklist**:
+  - Added `aisle` (`CharField(max_length=60, db_index=True)`) and `shelf_location` (`CharField(max_length=60)`) to `Product` model, serializer, and migration `products.0015_product_aisle_product_shelf_location`.
+  - Added `is_picked` (`BooleanField(default=False, db_index=True)`) and `picked_at` (`DateTimeField(null=True)`) to `CardItem` model, serializer, and migration `cards.0008_carditem_is_picked_carditem_picked_at`.
+  - Added real-time in-store shopping progress properties on `Card`: `total_items_count`, `picked_items_count`, `is_fully_picked`, and `picking_progress_percent`.
+  - Implemented line item physical basket picking endpoint `POST /cards/{id}/toggle-item-picked/` and bulk picking endpoint `POST /cards/{id}/batch-pick/`.
+  - Implemented in-store walking aisle route sorting (`GET /cards/{id}/?sort_by=aisle` and `GET /cards/active/?store_id=<id>&sort_by=aisle`) sequencing products by physical store layout (`product__aisle`, `product__shelf_location`).
+  - Added automated test suite: `test_aisle_picking.py` (6/6 passing).
+- Executed full test suite across entire SaaS platform: **237 / 237 tests passing (100% pass rate)**.
 
 ---
 

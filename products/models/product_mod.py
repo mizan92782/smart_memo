@@ -25,6 +25,8 @@ class Product(BaseModel):
     second_name = models.CharField(max_length=200, default="")
     sku = models.CharField(max_length=100, blank=True, default="", db_index=True)
     barcode = models.CharField(max_length=100, blank=True, default="", db_index=True)
+    aisle = models.CharField(max_length=60, blank=True, default="", db_index=True)
+    shelf_location = models.CharField(max_length=60, blank=True, default="")
     description = models.TextField(default=product_default_description)
     tags = ArrayField(
         models.CharField(max_length=50),

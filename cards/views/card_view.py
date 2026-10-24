@@ -40,9 +40,15 @@ class CardViewSet(viewsets.ModelViewSet):
 
     def retrieve(self, request, *args, **kwargs):
         card = self.get_object()
+        data = CardSerializer(card).data
+        sort_by = request.query_params.get('sort_by')
+        if sort_by == 'aisle':
+            from cards.serializers.card_ser import CardItemSerializer
+            sorted_items = CardService.get_card_items_sorted(card, sort_by='aisle')
+            data['items'] = CardItemSerializer(sorted_items, many=True).data
         return custome_success_response(
             message="Shopping memo retrieved.",
-            data=CardSerializer(card).data
+            data=data
         )
 
     @action(detail=False, methods=['get'])
@@ -56,9 +62,15 @@ class CardViewSet(viewsets.ModelViewSet):
                 store_id=store_id,
                 shopping_mode=shopping_mode
             )
+            data = CardSerializer(card).data
+            sort_by = request.query_params.get('sort_by')
+            if sort_by == 'aisle':
+                from cards.serializers.card_ser import CardItemSerializer
+                sorted_items = CardService.get_card_items_sorted(card, sort_by='aisle')
+                data['items'] = CardItemSerializer(sorted_items, many=True).data
             return custome_success_response(
                 message="Active draft shopping memo retrieved.",
-                data=CardSerializer(card).data
+                data=data
             )
         except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
@@ -378,4 +390,57 @@ class CardViewSet(viewsets.ModelViewSet):
             )
         except PermissionError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+
+    @action(detail=True, methods=['post'], url_path='toggle-item-picked')
+    def toggle_item_picked(self, request, pk=None):
+        """Toggle or mark in-store physical basket picking status of a memo line item."""
+        card = self.get_object()
+        item_id = request.data.get('item_id')
+        is_picked = request.data.get('is_picked')
+        if not item_id:
+            return custome_error_response("item_id is required.", status_code=status.HTTP_400_BAD_REQUEST)
+        try:
+            item = CardService.toggle_item_picked(
+                card=card,
+                item_id=int(item_id),
+                is_picked=is_picked,
+                actor=request.user
+            )
+            card.refresh_from_db()
+            from cards.serializers.card_ser import CardItemSerializer
+            return custome_success_response(
+                message=f"Item '{item.product.name}' marked as {'picked' if item.is_picked else 'unpicked'}.",
+                data={
+                    'item': CardItemSerializer(item).data,
+                    'total_items_count': card.total_items_count,
+                    'picked_items_count': card.picked_items_count,
+                    'is_fully_picked': card.is_fully_picked,
+                    'picking_progress_percent': card.picking_progress_percent
+                }
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='batch-pick')
+    def batch_pick(self, request, pk=None):
+        """Batch update physical basket picking status for multiple items in this memo."""
+        card = self.get_object()
+        item_ids = request.data.get('item_ids')
+        is_picked = request.data.get('is_picked', True)
+        if not isinstance(item_ids, list):
+            return custome_error_response("item_ids list is required.", status_code=status.HTTP_400_BAD_REQUEST)
+        try:
+            card = CardService.batch_pick_items(
+                card=card,
+                item_ids=item_ids,
+                is_picked=is_picked,
+                actor=request.user
+            )
+            return custome_success_response(
+                message=f"{len(item_ids)} item(s) updated in shopping basket.",
+                data=CardSerializer(card).data
+            )
+        except (ValueError, PermissionError) as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
 

@@ -108,6 +108,26 @@ class Card(BaseModel):
     def estimated_total(self):
         return max(Decimal('0.00'), self.total_price - self.discount_amount)
 
+    @property
+    def total_items_count(self) -> int:
+        return self.items.count()
+
+    @property
+    def picked_items_count(self) -> int:
+        return self.items.filter(is_picked=True).count()
+
+    @property
+    def is_fully_picked(self) -> bool:
+        total = self.total_items_count
+        return total > 0 and self.picked_items_count == total
+
+    @property
+    def picking_progress_percent(self) -> float:
+        total = self.total_items_count
+        if total == 0:
+            return 0.0
+        return round((self.picked_items_count / total) * 100.0, 1)
+
 
 class CardItem(BaseModel):
     """An individual product entry in a Card."""
@@ -123,6 +143,8 @@ class CardItem(BaseModel):
     )
     quantity = models.DecimalField(max_digits=10, decimal_places=2, default=1)
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)
+    is_picked = models.BooleanField(default=False, db_index=True)
+    picked_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = 'Card Item'

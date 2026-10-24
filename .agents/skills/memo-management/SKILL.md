@@ -56,3 +56,11 @@ A draft memo is an editable shopping list. A submitted order is a customer's req
   - `GET /orders/sales-memos/`: centralized digital receipt wallet for customers across all visited stores; vendors can filter by store or query as vendor (`?as_vendor=true`).
   - `SalesMemo.format_thermal_receipt()`: formats receipts into 40-column monospace slips suitable for 58mm/80mm POS thermal printers; exposed via `thermal_receipt` field and `GET /orders/{id}/thermal-receipt/`.
   - `GET /orders/customer-spending/`: multi-store customer analytics calculating total spent, total saved, and store-by-store breakdown using pure SQL database aggregations (`Coalesce(Sum(...))`).
+- **In-Store Shelf Barcode Scanning**:
+  - `POST /cards/{id}/scan-add/`: enables in-store shoppers to scan physical barcodes or SKUs directly off shelves; auto-resolves product in the store, validates stock, and adds or increments line item.
+- **In-Store Basket Picking Checklist & Aisle Route Sequencing**:
+  - `CardItem` tracks `is_picked` and `picked_at` timestamps as customers gather items into handheld baskets.
+  - `POST /cards/{id}/toggle-item-picked/`: toggles individual item picked status and returns real-time progress metrics (`total_items_count`, `picked_items_count`, `is_fully_picked`, `picking_progress_percent`).
+  - `POST /cards/{id}/batch-pick/`: updates multiple items in a single atomic operation.
+  - `GET /cards/{id}/?sort_by=aisle` / `GET /cards/active/?store_id=<id>&sort_by=aisle`: sequences products by physical store layout (`product__aisle`, `product__shelf_location`) for non-backtracking walk-through routes.
+

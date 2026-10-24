@@ -535,6 +535,10 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
         "product": 14,
         "product_name": "Crunchy Almond Cereal 500g",
         "barcode": "8901030383719",
+        "aisle": "Aisle 3 - Breakfast",
+        "shelf_location": "Rack 2, Top",
+        "is_picked": false,
+        "picked_at": null,
         "quantity": "1.000",
         "price": "60.00",
         "total": "60.00"
@@ -544,6 +548,72 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
   "errors": null
 }
 ```
+
+### `POST /cards/{id}/toggle-item-picked/`
+- **Description**: Toggles or marks the physical in-store basket picking status of a specific line item in a shopping memo. Sets `picked_at` timestamp and dynamically recalculates card picking progress metrics (`total_items_count`, `picked_items_count`, `is_fully_picked`, `picking_progress_percent`).
+- **Permissions**: `IsAuthenticated` (Memo owner only).
+- **Request Body**:
+```json
+{
+  "item_id": 9,
+  "is_picked": true
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Item 'Crunchy Almond Cereal 500g' marked as picked.",
+  "data": {
+    "item": {
+      "id": 9,
+      "product": 14,
+      "aisle": "Aisle 3 - Breakfast",
+      "shelf_location": "Rack 2, Top",
+      "is_picked": true,
+      "picked_at": "2026-10-24T22:20:00Z",
+      "quantity": "1.000",
+      "subtotal": "60.00"
+    },
+    "total_items_count": 3,
+    "picked_items_count": 2,
+    "is_fully_picked": false,
+    "picking_progress_percent": 66.7
+  },
+  "errors": null
+}
+```
+
+### `POST /cards/{id}/batch-pick/`
+- **Description**: Atomically marks multiple items in a shopping memo as physically picked or unpicked in one operation.
+- **Permissions**: `IsAuthenticated` (Memo owner only).
+- **Request Body**:
+```json
+{
+  "item_ids": [9, 10, 11],
+  "is_picked": true
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "3 item(s) updated in shopping basket.",
+  "data": {
+    "id": 5,
+    "total_items_count": 3,
+    "picked_items_count": 3,
+    "is_fully_picked": true,
+    "picking_progress_percent": 100.0,
+    "items": [...]
+  },
+  "errors": null
+}
+```
+
+### `GET /cards/{id}/?sort_by=aisle` & `GET /cards/active/?store_id=<id>&sort_by=aisle`
+- **Description**: Walking Route Optimization. Sorts memo items by store physical layout (`product__aisle`, `product__shelf_location`, `id`) so in-store walk-in shoppers can walk through the physical aisles sequentially (e.g. Aisle 1 -> Aisle 2 -> Aisle 3) without backtracking.
+- **Permissions**: `IsAuthenticated` (Customer owns memo).
 
 ---
 

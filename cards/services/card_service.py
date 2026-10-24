@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.db import transaction
+from django.utils import timezone
 from cards.models.card_mod import Card, CardItem
 from cards.repositories.card_repository import CardRepository
 from products.repositories.product_repository import ProductRepository
@@ -266,4 +267,51 @@ class CardService:
             new_title=new_title,
             is_saved_for_later=as_saved
         )
+
+    @staticmethod
+    def toggle_item_picked(card: Card, item_id: int, is_picked: bool = None, actor=None) -> CardItem:
+        """Toggle or set physical in-store picked status of a line item."""
+        if card.is_completed:
+            raise ValueError("Cannot modify items in a completed shopping memo.")
+        if actor and card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify items in your own shopping memo.")
+
+        item = card.items.filter(id=item_id).first()
+        if not item:
+            raise ValueError("Item not found in this shopping memo.")
+
+        if is_picked is None:
+            item.is_picked = not item.is_picked
+        else:
+            item.is_picked = bool(is_picked)
+
+        item.picked_at = timezone.now() if item.is_picked else None
+        item.save(update_fields=['is_picked', 'picked_at', 'updated_at'])
+        return item
+
+    @staticmethod
+    @transaction.atomic
+    def batch_pick_items(card: Card, item_ids: list, is_picked: bool = True, actor=None) -> Card:
+        """Batch update picked status for multiple items in a shopping memo."""
+        if card.is_completed:
+            raise ValueError("Cannot modify items in a completed shopping memo.")
+        if actor and card.user and card.user != actor and not getattr(actor, 'is_superuser', False):
+            raise PermissionError("You can only modify items in your own shopping memo.")
+
+        now = timezone.now() if is_picked else None
+        card.items.filter(id__in=item_ids).update(
+            is_picked=bool(is_picked),
+            picked_at=now,
+            updated_at=timezone.now()
+        )
+        return card
+
+    @staticmethod
+    def get_card_items_sorted(card: Card, sort_by: str = None):
+        """Retrieve card items, optionally ordered by physical store aisle layout."""
+        qs = card.items.select_related('product', 'product__category', 'product__store')
+        if sort_by == 'aisle':
+            return qs.order_by('product__aisle', 'product__shelf_location', 'id')
+        return qs.order_by('id')
+
 

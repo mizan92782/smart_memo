@@ -18,6 +18,8 @@ class ProductSerializer(serializers.ModelSerializer):
             'second_name',
             'sku',
             'barcode',
+            'aisle',
+            'shelf_location',
             'description',
             'tags',
             'category',
