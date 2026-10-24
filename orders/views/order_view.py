@@ -162,6 +162,29 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['post'], url_path='handover')
+    def handover(self, request, pk=None):
+        """Vendor hands over collected products to the customer in-store and collects payment."""
+        order = self.get_object()
+        if order.store.vendor != request.user and not request.user.is_superuser:
+            return custome_error_response("You do not own the store for this order.", status_code=status.HTTP_403_FORBIDDEN)
+
+        payment_collected = request.data.get('payment_collected', True)
+        try:
+            order = OrderService.handover_order(
+                order=order,
+                actor=request.user,
+                payment_collected=payment_collected
+            )
+            return custome_success_response(
+                message="Order handed over to customer successfully and sales memo issued.",
+                data=OrderSerializer(order).data
+            )
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
     @action(detail=True, methods=['post'])
     def cancel(self, request, pk=None):
         """Cancel order and release reserved stock."""

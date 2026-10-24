@@ -33,3 +33,11 @@ A draft memo is an editable shopping list. A submitted order is a customer's req
   - `POST /cards/{id}/clear/`: empty draft memo and reset store binding.
 - **Tenant Isolation & IDOR Protection**: `CardViewSet` requires `IsAuthenticated` and scopes `get_queryset()` strictly to `user=request.user`. Customer A cannot inspect, modify, or add items to Customer B's draft memo (404 / 403).
 - **Authoritative Price Revalidation at Checkout**: `OrderService.submit_order_from_card` verifies each item against `Product.effective_price` and product active status before creating the order. If an offer expired or price was updated while sitting in draft, the authoritative price is updated automatically and line totals recalculated.
+- **Multi-Store Concurrent Draft Memos & Store Entry**:
+  - `GET /cards/active/?store_id=<id>`: retrieves or auto-initializes the active draft memo specifically bound to that store.
+  - `POST /stores/{id}/memo/`: customer enters a specific store in the marketplace and gets an instant store-scoped draft memo.
+  - Customers can maintain parallel, non-colliding draft memos across multiple stores simultaneously (e.g., Grocery store memo, Pharmacy memo).
+- **In-Store Walk-In Shopping Mode (`walk_in`) & Counter Product Handover**:
+  - Customers physically walking inside a store set `shopping_mode='walk_in'` and add items to their memo as they walk around the store.
+  - At in-store checkout (`fulfillment_type='walk_in'`), delivery fees are suppressed (`0.00`) and no delivery address is required.
+  - Store owners/staff collect the picked items, accept on-the-spot payment, and hand over products via `POST /orders/{id}/handover/`, immediately completing the order and issuing the finalized `SalesMemo`.

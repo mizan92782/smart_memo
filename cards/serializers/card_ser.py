@@ -28,6 +28,6 @@ class CardSerializer(serializers.ModelSerializer):
         model = Card
         fields = [
             'id', 'user', 'store', 'store_name', 'coupon', 'coupon_code',
-            'title', 'is_completed', 'created_at', 'items',
+            'title', 'shopping_mode', 'notes', 'is_completed', 'created_at', 'items',
             'total_price', 'discount_amount', 'estimated_total'
         ]

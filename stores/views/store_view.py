@@ -414,5 +414,36 @@ class StoreViewSet(viewsets.ModelViewSet):
         except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=True, methods=['get', 'post'], url_path='memo', permission_classes=[IsAuthenticated])
+    def store_memo(self, request, pk=None):
+        """
+        GET /stores/{id}/memo/ or POST /stores/{id}/memo/
+        Retrieve or initialize the authenticated customer's draft memo specifically for this store.
+        Accepts optional 'shopping_mode' ('walk_in' or 'remote').
+        """
+        store = StoreRepository.get_by_id(pk)
+        if not store:
+            return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        shopping_mode = request.data.get('shopping_mode') if request.method == 'POST' else request.query_params.get('shopping_mode', 'remote')
+        if not shopping_mode:
+            shopping_mode = 'remote'
+
+        from cards.services.card_service import CardService
+        from cards.serializers.card_ser import CardSerializer
+        try:
+            card = CardService.get_or_create_active_memo(
+                user=request.user,
+                store=store,
+                shopping_mode=shopping_mode
+            )
+            return custome_success_response(
+                message=f"Draft memo for '{store.name}' retrieved.",
+                data=CardSerializer(card).data
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+
 
 

@@ -9,9 +9,19 @@ class CardService:
     """Encapsulates business operations for Card (Draft Shopping Memo)."""
 
     @staticmethod
-    def get_or_create_active_memo(user) -> Card:
-        """Fetch or initialize current draft shopping memo for user."""
-        return CardRepository.get_or_create_active_card_for_user(user)
+    def get_or_create_active_memo(user, store=None, store_id=None, shopping_mode: str = 'remote', title: str = None) -> Card:
+        """Fetch or initialize current draft shopping memo for user and specific store."""
+        if store_id and not store:
+            from stores.repositories.store_repository import StoreRepository
+            store = StoreRepository.get_by_id(store_id)
+            if not store:
+                raise ValueError("Store not found.")
+        return CardRepository.get_or_create_active_card_for_user(
+            user=user,
+            store=store,
+            shopping_mode=shopping_mode,
+            title=title
+        )
 
     @staticmethod
     def add_product_to_card(card_id: int, product_id: int, quantity: Decimal = Decimal('1'), actor=None) -> CardItem:

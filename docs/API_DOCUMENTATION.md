@@ -560,6 +560,32 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 }
 ```
 
+### `POST /orders/{id}/handover/`
+- **Description**: Store owner/staff collects products picked by a walk-in customer (or ready for pickup) and hands them over directly at the counter, collects payment on the spot, atomically fulfills reserved stock, and generates finalized `SalesMemo`.
+- **Permissions**: `IsAuthenticated` (Store Vendor only).
+- **Request Body**:
+```json
+{
+  "payment_collected": true
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Order handed over to customer successfully and sales memo issued.",
+  "data": {
+    "id": 1,
+    "status": "completed",
+    "payment_status": "collected",
+    "fulfillment_type": "walk_in",
+    "completed_at": "2026-10-24T17:15:00Z",
+    "paid_at": "2026-10-24T17:15:00Z"
+  },
+  "errors": null
+}
+```
+
 ### `GET /orders/{id}/sales_memo/`
 - **Description**: Download or view finalized immutable sales memo receipt.
 - **Permissions**: `IsAuthenticated` (Order Customer or Store Vendor).
@@ -667,9 +693,28 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 ## 12. Draft Shopping Memo (Card) APIs
 
 ### `GET /cards/active/`
-- **Description**: Returns or auto-initializes the authenticated customer's current active draft shopping memo.
+- **Description**: Returns or auto-initializes the authenticated customer's current active draft shopping memo. Supports `store_id` to retrieve or initialize a draft memo specifically for that store, and `shopping_mode` (`walk_in` for in-store shopping, or `remote` for home ordering).
 - **Permissions**: `IsAuthenticated`.
-- **Response**: `200 OK` with `Card` object containing `items`, `store`, `store_name`, and `total_price`.
+- **Query Parameters**:
+  - `store_id` (int, optional): Store ID to scope draft memo.
+  - `shopping_mode` (string, optional): `'walk_in'` or `'remote'`.
+- **Response**: `200 OK` with `Card` object containing `items`, `store`, `store_name`, `shopping_mode`, and `total_price`.
+
+### `POST /stores/{id}/memo/`
+- **Description**: Convenient store-entry action. Retrieves or auto-initializes the customer's draft memo specifically for the entered store.
+- **Permissions**: `IsAuthenticated`.
+- **Request Body (optional)**:
+```json
+{
+  "shopping_mode": "walk_in"
+}
+```
+
+### `GET /cards/`
+- **Description**: Lists all active and saved shopping memos for the customer.
+- **Query Parameters**:
+  - `store_id` (int, optional): Filter memos for a specific store.
+  - `is_completed` (bool, optional): Filter by completion status (`false` for drafts).
 
 ### `POST /cards/{id}/add-item/`
 - **Description**: Adds a product to draft memo. Enforces single-store rule and zero premature stock movement.
@@ -708,14 +753,13 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 - **Permissions**: `IsAuthenticated` (Card owner only).
 
 ### `POST /cards/{id}/checkout/`
-- **Description**: Converts customer's draft shopping memo card into a submitted order with atomic inventory reservation and catalog price/offer revalidation.
+- **Description**: Converts customer's draft shopping memo card into a submitted order with atomic inventory reservation and catalog price/offer revalidation. Supports `fulfillment_type="walk_in"` (for in-store shopping with zero delivery fee and no address required), `"pickup"`, or `"delivery"`.
 - **Permissions**: `IsAuthenticated` (Card owner only).
 - **Request Body**:
 ```json
 {
-  "fulfillment_type": "delivery",
-  "delivery_address": "Flat 4B, Green Road, Dhaka",
-  "notes": "Ring bell on arrival",
+  "fulfillment_type": "walk_in",
+  "notes": "Self-picked items from aisle 3",
   "idempotency_key": "chk-98a0f2b3"
 }
 ```

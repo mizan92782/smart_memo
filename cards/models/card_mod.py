@@ -8,6 +8,11 @@ from products.models.product_mod import Product
 from stores.models.store_mod import Store
 
 
+class ShoppingMode(models.TextChoices):
+    REMOTE = 'remote', 'Remote / Home Order'
+    WALK_IN = 'walk_in', 'In-Store Walk-In'
+
+
 class Card(BaseModel):
     """Card (Cart / Memo Card) model to group items for a user or session."""
     user = models.ForeignKey(
@@ -32,6 +37,12 @@ class Card(BaseModel):
         related_name='cards'
     )
     title = models.CharField(max_length=200, default="My Memo Card")
+    shopping_mode = models.CharField(
+        max_length=20,
+        choices=ShoppingMode.choices,
+        default=ShoppingMode.REMOTE
+    )
+    notes = models.TextField(blank=True, default='')
     is_completed = models.BooleanField(default=False)
 
     class Meta:

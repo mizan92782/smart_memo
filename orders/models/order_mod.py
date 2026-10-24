@@ -21,6 +21,7 @@ class OrderStatus(models.TextChoices):
 class FulfillmentType(models.TextChoices):
     PICKUP = 'pickup', 'Pickup'
     DELIVERY = 'delivery', 'Home Delivery'
+    WALK_IN = 'walk_in', 'In-Store Walk-In Handover'
 
 
 class PaymentStatus(models.TextChoices):

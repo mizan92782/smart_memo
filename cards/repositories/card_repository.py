@@ -19,22 +19,54 @@ class CardRepository:
         return Card.objects.select_related('store', 'user').prefetch_related('items__product').filter(pk=card_id).first()
 
     @staticmethod
-    def get_by_user(user_id: int) -> QuerySet[Card]:
-        """Fetch cards for a given user."""
-        return Card.objects.select_related('store').prefetch_related('items__product').filter(user_id=user_id)
+    def get_by_user(user_id: int, store_id: Optional[int] = None, is_completed: Optional[bool] = None) -> QuerySet[Card]:
+        """Fetch cards for a given user with optional store and completion filters."""
+        qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(user_id=user_id)
+        if store_id is not None:
+            qs = qs.filter(store_id=store_id)
+        if is_completed is not None:
+            qs = qs.filter(is_completed=is_completed)
+        return qs
 
     @staticmethod
-    def get_active_card_for_user(user_id: int) -> Optional[Card]:
-        """Fetch current active (uncompleted) card for user."""
-        return Card.objects.select_related('store').prefetch_related('items__product').filter(user_id=user_id, is_completed=False).first()
+    def get_active_card_for_user(user_id: int, store_id: Optional[int] = None) -> Optional[Card]:
+        """Fetch current active (uncompleted) card for user, optionally scoped to a store."""
+        qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(user_id=user_id, is_completed=False)
+        if store_id is not None:
+            qs = qs.filter(store_id=store_id)
+        return qs.first()
 
     @staticmethod
-    def get_or_create_active_card_for_user(user) -> Card:
-        """Fetch or create current active (uncompleted) draft card for user."""
-        card = Card.objects.select_related('store').prefetch_related('items__product').filter(user=user, is_completed=False).first()
-        if not card:
-            card = Card.objects.create(user=user, title="My Memo Card")
-        return card
+    def get_or_create_active_card_for_user(user, store=None, shopping_mode: str = 'remote', title: Optional[str] = None) -> Card:
+        """Fetch or create current active (uncompleted) draft card for user and store."""
+        qs = Card.objects.select_related('store', 'coupon').prefetch_related('items__product').filter(user=user, is_completed=False)
+        if store is not None:
+            card = qs.filter(store=store).first()
+            if not card:
+                # Check for an empty, unassigned draft card to adopt
+                empty_card = qs.filter(store__isnull=True).exclude(items__isnull=False).first()
+                if empty_card:
+                    empty_card.store = store
+                    empty_card.shopping_mode = shopping_mode
+                    empty_card.title = title or f"{store.name} Memo"
+                    empty_card.save(update_fields=['store', 'shopping_mode', 'title', 'updated_at'])
+                    return empty_card
+                card = Card.objects.create(
+                    user=user,
+                    store=store,
+                    shopping_mode=shopping_mode,
+                    title=title or f"{store.name} Memo"
+                )
+            return card
+        else:
+            card = qs.first()
+            if not card:
+                card = Card.objects.create(
+                    user=user,
+                    title=title or "My Memo Card",
+                    shopping_mode=shopping_mode
+                )
+            return card
 
     @staticmethod
     def create_card(user=None, user_id: Optional[int] = None, store=None, title: str = "My Memo Card") -> Card:

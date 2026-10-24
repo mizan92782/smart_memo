@@ -307,6 +307,9 @@ class OrderService:
             OrderStatus.READY_FOR_PICKUP,
             OrderStatus.OUT_FOR_DELIVERY
         ]
+        if order.fulfillment_type == FulfillmentType.WALK_IN:
+            valid_statuses.append(OrderStatus.SUBMITTED)
+
         if order.status not in valid_statuses:
             raise ValueError(f"Cannot fulfill order from status '{order.status}'.")
 
@@ -359,6 +362,23 @@ class OrderService:
         NotificationService.notify_order_status_change(order, OrderStatus.COMPLETED)
 
         return order
+
+    @staticmethod
+    @transaction.atomic
+    def handover_order(order: Order, actor, payment_collected: bool = True, notes: str = "") -> Order:
+        """
+        Store owner completes an in-store walk-in or pickup order by handing over the collected items directly to the customer.
+        Atomically fulfills reserved stock, marks payment collected, issues SalesMemo, and notifies customer.
+        """
+        from shared.enums.enums import UserRoleEnum
+        is_staff = getattr(actor, 'role', '') in [UserRoleEnum.STAFF, UserRoleEnum.SUPERUSER] or actor.is_staff or actor.is_superuser
+        if order.store.vendor != actor and not is_staff:
+            raise PermissionError("You do not have permission to hand over this order.")
+
+        if order.status in [OrderStatus.COMPLETED, OrderStatus.CANCELLED, OrderStatus.REJECTED]:
+            raise ValueError(f"Cannot hand over order in terminal status '{order.status}'.")
+
+        return OrderService.fulfill_order(order=order, actor=actor, payment_collected=payment_collected)
 
     @staticmethod
     @transaction.atomic

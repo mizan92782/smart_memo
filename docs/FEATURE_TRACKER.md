@@ -5,10 +5,11 @@ This document is the living single source of truth for feature development statu
 ---
 
 ## 📌 Last Working Feature
-- **Feature Name**: Full Multi-Tenant SaaS Platform (Delivery Driver Assignment & Real-Time Dispatch Tracking, Store Promotional Coupons & Order Discounts, Verified Customer Store Reviews & Ratings, Physical Inventory Audit & Batch Stock Reconciliation, Customer Saved Delivery Addresses & Dynamic Distance-Based Delivery Fees, Production Rate Limiting & Abuse Controls, Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
-- **Status**: 🟢 **Completed & Verified (188 Tests Passing)**
+- **Feature Name**: Full Multi-Tenant SaaS Platform (Multi-Store Memo Cards & In-Store Walk-In Shopping, Delivery Driver Assignment & Real-Time Dispatch Tracking, Store Promotional Coupons & Order Discounts, Verified Customer Store Reviews & Ratings, Physical Inventory Audit & Batch Stock Reconciliation, Customer Saved Delivery Addresses & Dynamic Distance-Based Delivery Fees, Production Rate Limiting & Abuse Controls, Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
+- **Status**: 🟢 **Completed & Verified (197 Tests Passing)**
 - **Last Verified Working**: 2026-10-24
 - **Current State**:
+  - `cards` & `orders` (Multi-Store Memo Cards & In-Store Walk-In Shopping): Support for multi-vendor digital marketplace model. Customers can enter distinct stores (`POST /stores/{id}/memo/`), maintaining concurrent, non-colliding draft memos across multiple stores (`GET /cards/active/?store_id=<id>`). In-store walk-in shopping mode (`shopping_mode='walk_in'`) allows customers to add items while physically walking in the store, checkout with zero delivery fee and no address required (`fulfillment_type='walk_in'`), and have store owners collect items and execute instant on-the-spot handover (`POST /orders/{id}/handover/`) with cash collection and immediate SalesMemo issuance. Passing 9/9 tests.
   - `orders` (Delivery Driver Assignment & Real-Time Dispatch Tracking): Real-time delivery personnel assignment (`delivery_person_name`, `delivery_person_phone`, `delivery_vehicle_type`, `delivery_tracking_notes`, `estimated_delivery_time`, `auto_dispatch`) via `POST /orders/{id}/assign-delivery/`. Reassignment support while in transit, pickup order and terminal order rejection, customer driver visibility on order retrieval, automated dispatching to `OUT_FOR_DELIVERY` with `dispatched_at` stamped, instant customer notification with driver contact details, and strict server-side tenant isolation / IDOR prevention. Passing 9/9 tests.
   - `stores` (Store Promotional Coupons & Order Discounts): `Coupon` and `CouponUsage` models, supporting percentage discounts with maximum ceiling caps (`max_discount_amount`) and fixed currency amounts, `min_order_amount`, `max_uses`, `max_uses_per_customer`, and active time windows (`start_date`, `end_date`). Draft memo coupon application (`POST /cards/{id}/apply-coupon/`) with live discount and estimated total preview, coupon detachment (`POST /cards/{id}/remove-coupon/`), authoritative checkout revalidation and discount deduction in `OrderService.submit_order_from_card`, immutable snapshots on `Order` and `SalesMemo`, atomic usage ledger tracking (`CouponUsage`), and vendor coupon management API (`/stores/{id}/coupons/`, `/stores/coupons/{id}/`). Passing 10/10 tests.
   - `stores` (Verified Customer Store Reviews & Ratings): `StoreReview` model with completed order verification (`unique_together = ('store', 'customer')`), automated calculation and denormalization of `average_rating` and `total_reviews` on `Store` via SQL aggregation, customer review submission (`POST /stores/{id}/reviews/`), public review listing (`GET /stores/{id}/reviews/`), vendor official reply (`POST /stores/reviews/{id}/reply/`), review deletion by customer or staff (`DELETE /stores/reviews/{id}/`), cache invalidation on rating updates, and tenant-level authorization. Passing 10/10 tests.
@@ -62,8 +63,9 @@ This document is the living single source of truth for feature development statu
 | **22** | **Verified Customer Store Reviews & Ratings** | Completed order verified reviews (`StoreReview`), anti-spam unique guard, denormalized O(1) store average rating, vendor replies, moderation | 🟢 Completed | 🟢 10 Passing | 🟢 10 Passing | 🟢 Enforced |
 | **23** | **Store Promotional Coupons & Order Discounts** | Store-scoped discount coupons (`Coupon`), percentage/fixed discounts, min order amounts, usage limits, draft memo application, authoritative checkout calculation, usage ledger (`CouponUsage`) | 🟢 Completed | 🟢 10 Passing | 🟢 10 Passing | 🟢 Enforced |
 | **24** | **Delivery Driver Assignment & Real-Time Tracking** | Vendor driver assignment (`name`, `phone`, `vehicle_type`, `tracking_notes`, `estimated_delivery_time`), auto-dispatch, in-transit reassignment, pickup/terminal guards, customer notifications | 🟢 Completed | 🟢 9 Passing | 🟢 9 Passing | 🟢 Enforced |
+| **25** | **Multi-Store Memos & In-Store Walk-In Shopping** | Marketplace parallel store draft memos, store-scoped active cards, in-store walk-in shopping mode, zero-fee walk-in checkout, vendor counter product handover & instant completion | 🟢 Completed | 🟢 9 Passing | 🟢 9 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 188 / 188 (100% Passing)*
+*Total Active Automated Tests Passing: 197 / 197 (100% Passing)*
 
 ---
 
@@ -95,6 +97,7 @@ This document is the living single source of truth for feature development statu
 | **Cards** | `cards/tests/test_cards.py` | Multi-product card, single-store enforcement, stock non-deduction | 🟢 Passing | 3 / 3 OK |
 | **Cards** | `cards/tests/test_checkout.py` | Draft memo checkout to submitted order, inventory reservation, authorization | 🟢 Passing | 4 / 4 OK |
 | **Cards** | `cards/tests/test_memo_management.py` | Draft memo item CRUD (`add`, `update`, `remove`, `clear`), empty reset, IDOR, offer revalidation | 🟢 Passing | 5 / 5 OK |
+| **Cards** | `cards/tests/test_multi_store_memos.py` | Multi-store parallel cards, store entry action, walk-in shopping mode, zero-fee checkout, counter handover | 🟢 Passing | 9 / 9 OK |
 | **Orders** | `orders/tests/test_state_machine.py` | Order submission, acceptance, fulfillment, cancellation, Sales Memo | 🟢 Passing | 4 / 4 OK |
 | **Orders** | `orders/tests/test_idempotency.py` | Idempotency deduplication, cross-customer order isolation, cross-vendor isolation | 🟢 Passing | 3 / 3 OK |
 | **Orders** | `orders/tests/test_performance.py` | N+1 query prevention on orders listing and catalog search (`assertNumQueries`) | 🟢 Passing | 2 / 2 OK |
@@ -171,7 +174,14 @@ This document is the living single source of truth for feature development statu
   - Implemented `POST /orders/{id}/assign-delivery/` endpoint with auto-dispatch capability (`auto_dispatch=True` advancing status to `OUT_FOR_DELIVERY`), pickup and terminal order guards, and real-time customer notifications.
   - Exposed delivery driver contact info in `OrderSerializer` for customer tracking while strictly isolating assignment controls to store vendors.
   - Added `test_delivery_assignment.py` (9/9 passing).
-- Executed full test suite across entire SaaS platform: **188 / 188 tests passing (100% pass rate)**.
+- Implemented **Phase 25: Multi-Store Memo Cards & In-Store Walk-In Shopping**:
+  - Enhanced `Card` model with `shopping_mode` (`walk_in` vs `remote`) and notes.
+  - Implemented multi-store parallel draft cards, allowing customers to enter any store and maintain distinct, simultaneous shopping memos across different stores (`GET /cards/active/?store_id=<id>`, `POST /stores/{id}/memo/`).
+  - Added `WALK_IN = 'walk_in', 'In-Store Walk-In Handover'` to `FulfillmentType`.
+  - In-store walk-in shopping allows adding items while walking inside the store, checking out with zero delivery fee and no address required.
+  - Implemented `POST /orders/{id}/handover/` allowing store owners to collect picked products, collect payment on spot, and hand them over directly at the counter, issuing the immutable `SalesMemo`.
+  - Added `test_multi_store_memos.py` (9/9 passing).
+- Executed full test suite across entire SaaS platform: **197 / 197 tests passing (100% pass rate)**.
 
 ---
 

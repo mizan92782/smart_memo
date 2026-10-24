@@ -20,7 +20,12 @@ class CardViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if not user or not user.is_authenticated:
             return Card.objects.none()
-        return CardRepository.get_by_user(user.id)
+        store_id = self.request.query_params.get('store_id')
+        is_completed = self.request.query_params.get('is_completed')
+        is_comp_val = None
+        if is_completed is not None:
+            is_comp_val = is_completed.lower() in ['true', '1']
+        return CardRepository.get_by_user(user.id, store_id=store_id, is_completed=is_comp_val)
 
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
@@ -34,12 +39,21 @@ class CardViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def active(self, request):
-        """Retrieve or initialize the active draft memo for the customer."""
-        card = CardService.get_or_create_active_memo(request.user)
-        return custome_success_response(
-            message="Active draft shopping memo retrieved.",
-            data=CardSerializer(card).data
-        )
+        """Retrieve or initialize the active draft memo for the customer, optionally scoped to a store."""
+        store_id = request.query_params.get('store_id')
+        shopping_mode = request.query_params.get('shopping_mode', 'remote')
+        try:
+            card = CardService.get_or_create_active_memo(
+                user=request.user,
+                store_id=store_id,
+                shopping_mode=shopping_mode
+            )
+            return custome_success_response(
+                message="Active draft shopping memo retrieved.",
+                data=CardSerializer(card).data
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=True, methods=['post'], url_path='add-item')
     def add_item(self, request, pk=None):
