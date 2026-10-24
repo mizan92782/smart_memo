@@ -878,3 +878,102 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 - **Description**: Detailed retrieval of a single audit log entry.
 - **Permissions**: `IsAuthenticated` (enforces vendor store ownership or staff role).
 - **Security**: Direct mutations (`POST`, `PUT`, `PATCH`, `DELETE`) are strictly rejected with `405 Method Not Allowed`. Audit log models disallow updates and deletions at ORM level (`PermissionDenied`).
+
+---
+
+## 15. Customer Saved Delivery Addresses & Dynamic Delivery Fees
+
+### `GET /users/addresses/`
+- **Description**: List all saved delivery addresses for the authenticated customer. Soft-deleted records are automatically excluded.
+- **Permissions**: `IsAuthenticated` (Customer).
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Delivery addresses retrieved successfully.",
+  "data": [
+    {
+      "id": 12,
+      "label": "Home",
+      "recipient_name": "Alice Smith",
+      "phone_number": "+8801700000001",
+      "address_line": "House 12, Road 5, Block B",
+      "city": "Dhaka",
+      "postal_code": "1212",
+      "latitude": 23.815,
+      "longitude": 90.415,
+      "delivery_instructions": "Leave with gate security",
+      "is_default": true,
+      "created_at": "2026-10-24T09:15:00Z"
+    }
+  ]
+}
+```
+
+### `POST /users/addresses/`
+- **Description**: Create a new delivery address for the authenticated customer. First address created automatically becomes the default. If `is_default=True` is passed, existing defaults for this customer are atomically reset.
+- **Permissions**: `IsAuthenticated` (Customer).
+- **Request Body**:
+```json
+{
+  "label": "Office",
+  "recipient_name": "Alice Smith",
+  "phone_number": "+8801700000002",
+  "address_line": "Level 8, Tech Tower, Banani",
+  "city": "Dhaka",
+  "postal_code": "1213",
+  "latitude": 23.7937,
+  "longitude": 90.4066,
+  "delivery_instructions": "Call upon arrival",
+  "is_default": false
+}
+```
+
+### `GET /users/addresses/{id}/`
+- **Description**: Retrieve a specific saved address by ID. Enforces strict customer ownership; attempts by other users return `404 Not Found`.
+
+### `PATCH /users/addresses/{id}/`
+- **Description**: Update fields of a saved address. Validates latitude/longitude bounds if provided.
+
+### `DELETE /users/addresses/{id}/`
+- **Description**: Soft-deletes a saved address (`is_deleted=True`), preserving historical order snapshots while removing it from customer view.
+
+### `POST /users/addresses/{id}/set-default/`
+- **Description**: Marks the specified address as default and atomically unsets default status on all other addresses owned by the customer.
+
+### `POST /stores/{id}/calculate-delivery-fee/`
+- **Description**: Real-time delivery quote calculating distance and tiered delivery fee from the store to the customer's coordinates or saved `address_id`.
+- **Permissions**: Public (`AllowAny`).
+- **Request Body (Coordinates or Address ID)**:
+```json
+{
+  "lat": 23.7500,
+  "lng": 90.4125
+}
+```
+*or*
+```json
+{
+  "address_id": 12
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Delivery fee calculated successfully.",
+  "data": {
+    "store_id": 1,
+    "distance_km": 6.71,
+    "delivery_fee": "100.65",
+    "is_dynamic": true
+  }
+}
+```
+*(Tiered fee rule: store's base `delivery_fee` covers up to 2.0 km. Beyond 2.0 km, additional distance is billed at 15.00/km).*
+
+### Memo Checkout with Address Support
+- **Endpoint**: `POST /cards/{id}/checkout/`
+- **Payload**: Accepts `"address_id": 12` (or falls back to customer's default address or profile).
+- **Behavior**: Snapshots recipient, formatted address, phone, and delivery instructions directly onto the `Order`, and calculates distance-based dynamic delivery fee.
+

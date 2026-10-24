@@ -20,7 +20,8 @@ class OrderService:
         fulfillment_type: str = FulfillmentType.PICKUP,
         delivery_address: str = "",
         idempotency_key: str = None,
-        notes: str = ""
+        notes: str = "",
+        address_id: int = None
     ) -> Order:
         """
         Creates an Order from a customer's draft Card and atomically reserves stock.
@@ -68,11 +69,29 @@ class OrderService:
                     f"Current subtotal: {subtotal}."
                 )
 
-        delivery_fee = card.store.delivery_fee if fulfillment_type == FulfillmentType.DELIVERY else Decimal('0.00')
-        total_amount = subtotal + delivery_fee
-
         profile = getattr(customer, 'profile', None)
         phone = profile.phone_number if profile and hasattr(profile, 'phone_number') else ""
+
+        if fulfillment_type == FulfillmentType.DELIVERY and address_id:
+            from users.models.address_mod import CustomerAddress
+            try:
+                addr = CustomerAddress.objects.get(id=address_id, customer=customer, is_deleted=False)
+                delivery_address = addr.formatted_snapshot()
+                if addr.phone_number:
+                    phone = addr.phone_number
+                from stores.services.store_service import StoreService
+                dynamic_fee, _ = StoreService.calculate_delivery_fee(
+                    card.store, customer_lat=addr.latitude, customer_lng=addr.longitude
+                )
+                delivery_fee = dynamic_fee
+            except CustomerAddress.DoesNotExist:
+                raise ValueError("Saved address not found or does not belong to you.")
+        elif fulfillment_type == FulfillmentType.DELIVERY:
+            delivery_fee = card.store.delivery_fee if card.store.delivery_fee is not None else Decimal('0.00')
+        else:
+            delivery_fee = Decimal('0.00')
+
+        total_amount = subtotal + delivery_fee
 
         order = OrderRepository.create_order(
             customer=customer,

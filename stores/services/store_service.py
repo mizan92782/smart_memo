@@ -162,4 +162,39 @@ class StoreService:
         """Retrieve aggregated platform metrics."""
         return StoreRepository.get_platform_metrics()
 
+    @staticmethod
+    def calculate_delivery_fee(
+        store: Store,
+        customer_lat: Optional[float] = None,
+        customer_lng: Optional[float] = None
+    ) -> Tuple[Decimal, Optional[float]]:
+        """
+        Calculates server-authoritative delivery fee based on Haversine distance:
+        - Base flat fee: store.delivery_fee (or Decimal('30.00') default) covers up to 2.0 km.
+        - Additional distance: Decimal('15.00') per km beyond 2.0 km, rounded to 2 decimal places.
+        - Fallback: store.delivery_fee when coordinates are unavailable.
+        Returns: (fee: Decimal, distance_km: Optional[float])
+        """
+        base_fee = Decimal(str(store.delivery_fee)) if store.delivery_fee is not None else Decimal('30.00')
+
+        if (
+            customer_lat is not None and
+            customer_lng is not None and
+            store.latitude is not None and
+            store.longitude is not None
+        ):
+            dist = StoreService.calculate_haversine_distance(
+                customer_lat, customer_lng,
+                float(store.latitude), float(store.longitude)
+            )
+            if dist <= 2.0:
+                return base_fee, dist
+            extra_km = Decimal(str(round(dist - 2.0, 3)))
+            per_km_rate = Decimal('15.00')
+            dynamic_fee = base_fee + (extra_km * per_km_rate)
+            return dynamic_fee.quantize(Decimal('0.01')), dist
+
+        return base_fee, None
+
+
 

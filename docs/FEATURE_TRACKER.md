@@ -5,10 +5,11 @@ This document is the living single source of truth for feature development statu
 ---
 
 ## 📌 Last Working Feature
-- **Feature Name**: Full Multi-Tenant SaaS Platform (Production Rate Limiting & Abuse Controls, Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
-- **Status**: 🟢 **Completed & Verified (141 Tests Passing)**
+- **Feature Name**: Full Multi-Tenant SaaS Platform (Customer Saved Delivery Addresses & Dynamic Distance-Based Delivery Fees, Production Rate Limiting & Abuse Controls, Audit Logging & Activity Trail, Platform Administration & Store Governance, Authentication Lifecycle & User Profile Management, Order Fulfillment Pipeline, Draft Memo Management & Isolation, Deployment Observability, Tenant-Safe Caching, Delivery & Payment Decoupling, Notifications & Alerting Engine, Discovery & Favorites, Draft Memo Checkout, Reports, Purchases, Orders, Inventory, Cards, Products, Categories, Stores & Users)
+- **Status**: 🟢 **Completed & Verified (151 Tests Passing)**
 - **Last Verified Working**: 2026-10-24
 - **Current State**:
+  - `users` (Customer Saved Delivery Addresses & Dynamic Fees): `CustomerAddress` model with soft deletion, automated single default address invariant (`is_default`), coordinate validation, strict customer tenant isolation / IDOR prevention, dynamic tiered Haversine delivery fee calculator (`POST /stores/{id}/calculate-delivery-fee/`), memo checkout address integration snapshotting recipient, address, phone and instructions to `Order`, charging dynamic distance-based fees. Passing 10/10 tests.
   - `shared/throtling` & `users` (Production Rate Limiting & Abuse Controls): Scoped rate throttles (`LoginAnonThrottle` 5/min, `LoginUserThrottle` 5/min, `SignupAnonThrottle` 5/min, `NearbyDiscoveryThrottle` 30/min), global rate configuration in `REST_FRAMEWORK['DEFAULT_THROTTLE_RATES']`, custom exception handler with automated `available_in_seconds` retry-after delay payload and HTTP 429 status response. Passing 3/3 tests.
   - `audit` (Audit Logging & Activity Trail): Immutable append-only audit ledger (`AuditLog`) recording all critical state mutations (store verification/suspension/reactivation, inventory adjustments, order cancellations, COD payment collections, password changes) with actor snapshot, IP address, user-agent, and structured JSON diffs. Enforces model-level immutability (`.save()` updates and `.delete()` blocked), `ReadOnlyModelViewSet` (POST/PUT/DELETE blocked with 405), and strict tenant isolation (vendors limited to their stores, staff/admin see platform-wide, customers blocked). Passing 13/13 tests.
   - `stores` (Platform Administration & Governance): Administrative store verification (`is_verified`, `verified_at`, `verification_notes`), store suspension (`POST /stores/{id}/suspend/`), reactivation (`POST /stores/{id}/activate/`), platform-wide metrics overview (`GET /stores/governance-overview/`), exclusion of unverified/inactive stores from public discovery and checkout orders, role governance enforced with `IsStaffOrAdmin`. Passing 16/16 tests.
@@ -52,8 +53,9 @@ This document is the living single source of truth for feature development statu
 | **17** | **Platform Admin & Store Governance** | Store verification (`verify`, `suspend`, `activate`), unverified checkout/discovery guard, platform overview metrics | 🟢 Completed | 🟢 12 Passing | 🟢 12 Passing | 🟢 Enforced |
 | **18** | **Audit Logging & Activity Trail** | Immutable append-only audit trail (`AuditLog`), automated logging on store governance, inventory adjustments, orders & security events, tenant-scoped read-only API | 🟢 Completed | 🟢 13 Passing | 🟢 13 Passing | 🟢 Enforced |
 | **19** | **Rate Limiting & Abuse Controls** | Scoped throttling (`LoginAnonThrottle`, `LoginUserThrottle`, `SignupAnonThrottle`, `NearbyDiscoveryThrottle`), retry delay metadata in exception handler, 429 response structure | 🟢 Completed | 🟢 3 Passing | 🟢 3 Passing | 🟢 Enforced |
+| **20** | **Customer Addresses & Dynamic Delivery Fees** | Saved addresses (`CustomerAddress`), single default enforcement, soft-deletion, IDOR protection, Haversine delivery fee quote, checkout snapshotting | 🟢 Completed | 🟢 10 Passing | 🟢 10 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 141 / 141 (100% Passing)*
+*Total Active Automated Tests Passing: 151 / 151 (100% Passing)*
 
 ---
 
@@ -63,6 +65,7 @@ This document is the living single source of truth for feature development statu
 |---|---|---|:---:|:---:|
 | **Users** | `users/tests/test_auth.py` | User creation, role assignment, registration, profile retrieval | 🟢 Passing | 5 / 5 OK |
 | **Users** | `users/tests/test_user_lifecycle.py` | Login, logout, change-password with token rotation, profile isolation | 🟢 Passing | 13 / 13 OK |
+| **Users** | `users/tests/test_delivery_addresses.py` | Saved addresses, default invariant, soft delete, IDOR, dynamic delivery fee & checkout snapshot | 🟢 Passing | 10 / 10 OK |
 | **Users** | `users/tests/test_observability.py` | Liveness `/health/live/`, readiness `/health/ready/`, DB/cache/migration checks, secret safety | 🟢 Passing | 6 / 6 OK |
 | **Stores** | `stores/tests/test_stores.py` | Slug generation, store updates, soft deletion | 🟢 Passing | 4 / 4 OK |
 | **Stores** | `stores/tests/test_security.py` | Cross-tenant isolation, customer store creation block, public store discovery | 🟢 Passing | 4 / 4 OK |

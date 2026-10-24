@@ -29,7 +29,7 @@ class StoreViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsPagination
 
     def get_permissions(self):
-        if self.action in ['public', 'public_detail', 'nearby']:
+        if self.action in ['public', 'public_detail', 'nearby', 'calculate_delivery_fee']:
             return [AllowAny()]
         if self.action in ['favorite', 'unfavorite', 'favorites']:
             return [IsAuthenticated(), IsCustomer()]
@@ -271,5 +271,46 @@ class StoreViewSet(viewsets.ModelViewSet):
             data=metrics,
             data_title="overview"
         )
+
+    @action(detail=True, methods=['post'], permission_classes=[AllowAny], url_path='calculate-delivery-fee')
+    def calculate_delivery_fee(self, request, pk=None):
+        """POST /stores/{id}/calculate-delivery-fee/ -> Computes dynamic delivery fee based on customer address/coordinates."""
+        store = StoreRepository.get_by_id(pk)
+        if not store:
+            return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        customer_lat = None
+        customer_lng = None
+
+        address_id = request.data.get('address_id')
+        if address_id:
+            from users.models.address_mod import CustomerAddress
+            try:
+                addr = CustomerAddress.objects.get(id=address_id, is_deleted=False)
+                customer_lat = addr.latitude
+                customer_lng = addr.longitude
+            except CustomerAddress.DoesNotExist:
+                return custome_error_response("Address not found.", status_code=status.HTTP_404_NOT_FOUND)
+        else:
+            lat_val = request.data.get('lat')
+            lng_val = request.data.get('lng')
+            if lat_val is not None and lng_val is not None:
+                try:
+                    customer_lat = float(lat_val)
+                    customer_lng = float(lng_val)
+                except (ValueError, TypeError):
+                    return custome_error_response("Coordinates must be valid numbers.")
+
+        fee, dist = StoreService.calculate_delivery_fee(store, customer_lat=customer_lat, customer_lng=customer_lng)
+        return custome_success_response(
+            message="Delivery fee calculated successfully.",
+            data={
+                "store_id": store.id,
+                "distance_km": round(dist, 2) if dist is not None else None,
+                "delivery_fee": str(fee),
+                "is_dynamic": dist is not None
+            }
+        )
+
 
 

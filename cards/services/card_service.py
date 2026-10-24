@@ -106,7 +106,8 @@ class CardService:
         fulfillment_type: str = 'pickup',
         delivery_address: str = "",
         idempotency_key: str = None,
-        notes: str = ""
+        notes: str = "",
+        address_id: int = None
     ):
         """
         Transition draft card to submitted order.
@@ -122,6 +123,7 @@ class CardService:
             fulfillment_type=fulfillment_type,
             delivery_address=delivery_address,
             idempotency_key=idempotency_key,
-            notes=notes
+            notes=notes,
+            address_id=address_id
         )
 

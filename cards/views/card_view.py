@@ -141,14 +141,20 @@ class CardViewSet(viewsets.ModelViewSet):
 
         fulfillment_type = request.data.get('fulfillment_type', 'pickup')
         delivery_address = request.data.get('delivery_address', '')
+        address_id = request.data.get('address_id')
         notes = request.data.get('notes', '')
         idempotency_key = request.data.get('idempotency_key')
 
-        if fulfillment_type == 'delivery' and not delivery_address:
-            profile = getattr(request.user, 'profile', None)
-            delivery_address = profile.address if profile and profile.address else ""
-            if not delivery_address:
-                return custome_error_response("delivery_address is required for home delivery.", status_code=status.HTTP_400_BAD_REQUEST)
+        if fulfillment_type == 'delivery' and not delivery_address and not address_id:
+            from users.repositories.address_repository import AddressRepository
+            default_addr = AddressRepository.get_default_address(request.user)
+            if default_addr:
+                address_id = default_addr.id
+            else:
+                profile = getattr(request.user, 'profile', None)
+                delivery_address = profile.address if profile and profile.address else ""
+                if not delivery_address:
+                    return custome_error_response("delivery_address is required for home delivery (or provide an address_id).", status_code=status.HTTP_400_BAD_REQUEST)
 
         from orders.serializers.order_ser import OrderSerializer
 
@@ -159,7 +165,8 @@ class CardViewSet(viewsets.ModelViewSet):
                 fulfillment_type=fulfillment_type,
                 delivery_address=delivery_address,
                 idempotency_key=idempotency_key,
-                notes=notes
+                notes=notes,
+                address_id=address_id
             )
             return custome_success_response(
                 message="Order placed successfully from shopping memo.",
