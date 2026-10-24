@@ -586,8 +586,56 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 }
 ```
 
+### `POST /orders/counter-lookup/`
+- **Description**: In-store Counter POS verification. Store owner or counter staff types or scans the customer's 6-digit walk-in / pickup verification code (`walk_in_code`) to instantly retrieve order items and details for verification, item picking, and handover.
+- **Permissions**: `IsAuthenticated` (Store Vendor or Platform Staff only; strictly scoped to the store's vendor).
+- **Request Body**:
+```json
+{
+  "code": "481923",
+  "store_id": 1
+}
+```
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Counter walk-in order retrieved.",
+  "data": {
+    "id": 12,
+    "order_number": "ORD-6F9812A9",
+    "customer": 5,
+    "customer_email": "shopper@test.com",
+    "vendor": 2,
+    "vendor_email": "vendor@test.com",
+    "store": 1,
+    "store_name": "City Mart",
+    "status": "submitted",
+    "fulfillment_type": "walk_in",
+    "walk_in_code": "481923",
+    "delivery_address": "",
+    "delivery_fee": "0.00",
+    "subtotal": "500.00",
+    "total_amount": "500.00",
+    "payment_method": "cod",
+    "payment_status": "pending",
+    "items": [
+      {
+        "id": 24,
+        "product": 8,
+        "product_name_snapshot": "Organic Honey 500g",
+        "unit_price_snapshot": "250.00",
+        "quantity": "2.000",
+        "line_total": "500.00"
+      }
+    ]
+  },
+  "errors": null
+}
+```
+
 ### `GET /orders/{id}/sales_memo/`
-- **Description**: Download or view finalized immutable sales memo receipt.
+- **Description**: Download or view finalized immutable sales memo receipt. Contains `walk_in_code_snapshot`.
 - **Permissions**: `IsAuthenticated` (Order Customer or Store Vendor).
 
 ---

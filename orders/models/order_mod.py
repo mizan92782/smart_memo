@@ -106,6 +106,9 @@ class Order(BaseModel):
     delivery_assigned_at = models.DateTimeField(null=True, blank=True)
     estimated_delivery_time = models.DateTimeField(null=True, blank=True)
 
+    # In-Store Counter POS Walk-In Verification Code
+    walk_in_code = models.CharField(max_length=12, blank=True, db_index=True)
+
 
     class Meta:
         ordering = ['-created_at']
@@ -123,6 +126,9 @@ class Order(BaseModel):
     def save(self, *args, **kwargs):
         if not self.order_number:
             self.order_number = f"ORD-{uuid.uuid4().hex[:10].upper()}"
+        if not self.walk_in_code and self.fulfillment_type in [FulfillmentType.WALK_IN, FulfillmentType.PICKUP]:
+            import secrets
+            self.walk_in_code = f"{secrets.randbelow(900000) + 100000}"
         if self.store_id and not self.vendor_id:
             if hasattr(self, 'store') and self.store and self.store.vendor:
                 self.vendor = self.store.vendor
@@ -131,6 +137,8 @@ class Order(BaseModel):
             update_fields = set(update_fields)
             if 'vendor' not in update_fields and self.vendor_id:
                 update_fields.add('vendor')
+            if 'walk_in_code' not in update_fields and self.walk_in_code:
+                update_fields.add('walk_in_code')
             kwargs['update_fields'] = update_fields
         super().save(*args, **kwargs)
 
@@ -196,6 +204,7 @@ class SalesMemo(BaseModel):
     delivery_fee = models.DecimalField(max_digits=10, decimal_places=2)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
     amount_paid = models.DecimalField(max_digits=10, decimal_places=2)
+    walk_in_code_snapshot = models.CharField(max_length=12, blank=True, default="")
 
     class Meta:
         verbose_name = 'Sales Memo'
@@ -217,6 +226,8 @@ class SalesMemo(BaseModel):
                 self.customer = self.order.customer
             if not self.vendor_id and hasattr(self, 'order') and self.order:
                 self.vendor = getattr(self.order, 'vendor', None) or (self.order.store.vendor if self.order.store else None)
+            if not self.walk_in_code_snapshot and hasattr(self, 'order') and self.order:
+                self.walk_in_code_snapshot = getattr(self.order, 'walk_in_code', '')
         update_fields = kwargs.get('update_fields')
         if update_fields is not None:
             update_fields = set(update_fields)
@@ -224,6 +235,8 @@ class SalesMemo(BaseModel):
                 update_fields.add('customer')
             if 'vendor' not in update_fields and self.vendor_id:
                 update_fields.add('vendor')
+            if 'walk_in_code_snapshot' not in update_fields and self.walk_in_code_snapshot:
+                update_fields.add('walk_in_code_snapshot')
             kwargs['update_fields'] = update_fields
         super().save(*args, **kwargs)
 

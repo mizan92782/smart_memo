@@ -21,13 +21,13 @@ class SalesMemoSerializer(serializers.ModelSerializer):
             'id', 'memo_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
             'coupon_code', 'discount_amount',
-            'delivery_fee', 'total_amount', 'amount_paid', 'created_at'
+            'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot', 'created_at'
         ]
         read_only_fields = [
             'id', 'memo_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
             'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
             'coupon_code', 'discount_amount',
-            'delivery_fee', 'total_amount', 'amount_paid', 'created_at'
+            'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot', 'created_at'
         ]
 
 
@@ -42,7 +42,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model = Order
         fields = [
             'id', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
-            'store', 'store_name', 'status', 'fulfillment_type',
+            'store', 'store_name', 'status', 'fulfillment_type', 'walk_in_code',
             'delivery_address', 'delivery_fee', 'subtotal',
             'coupon_code', 'discount_amount',
             'total_amount', 'payment_method', 'payment_status',
@@ -57,7 +57,7 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
-            'store_name', 'status', 'delivery_fee', 'subtotal',
+            'store_name', 'status', 'walk_in_code', 'delivery_fee', 'subtotal',
             'coupon_code', 'discount_amount',
             'total_amount', 'payment_status', 'accepted_at',
             'preparing_at', 'dispatched_at',

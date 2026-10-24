@@ -237,3 +237,21 @@ class OrderViewSet(viewsets.ReadOnlyModelViewSet):
         except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
 
+    @action(detail=False, methods=['post'], url_path='counter-lookup')
+    def counter_lookup(self, request):
+        """Look up a customer order at the physical store counter via 6-digit walk-in code."""
+        code = request.data.get('code') or request.data.get('walk_in_code')
+        store_id = request.data.get('store_id')
+        try:
+            order = OrderService.counter_lookup(code=code, actor=request.user, store_id=store_id)
+            return custome_success_response(
+                message="Counter walk-in order retrieved.",
+                data=OrderSerializer(order).data
+            )
+        except Order.DoesNotExist:
+            return custome_error_response("No order found with the provided counter walk-in code.", status_code=status.HTTP_404_NOT_FOUND)
+        except PermissionError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_403_FORBIDDEN)
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+

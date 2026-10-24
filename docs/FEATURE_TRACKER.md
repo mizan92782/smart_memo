@@ -110,6 +110,7 @@ This document is the living single source of truth for feature development statu
 | **Orders** | `orders/tests/test_delivery_payment.py` | Delivery/pickup store capability enforcement, min order validation, decoupled COD payment collection | 🟢 Passing | 4 / 4 OK |
 | **Orders** | `orders/tests/test_fulfillment_pipeline.py` | Full 5-stage fulfillment pipeline (`prepare`, `dispatch`), timestamps, customer cancel guards | 🟢 Passing | 5 / 5 OK |
 | **Orders** | `orders/tests/test_delivery_assignment.py` | Driver assignment, auto-dispatch, in-transit reassignment, pickup/terminal guards, notifications | 🟢 Passing | 9 / 9 OK |
+| **Orders** | `orders/tests/test_counter_pos.py` | In-Store Counter POS, 6-digit walk-in code lookup, handover flow, cross-vendor isolation, sales memo snapshot | 🟢 Passing | 7 / 7 OK |
 | **Purchases** | `purchases/tests/test_purchases.py` | Supplier creation, draft PO zero-stock impact, atomic receiving, duplicate rejection | 🟢 Passing | 4 / 4 OK |
 | **Purchases** | `purchases/tests/test_security.py` | Cross-vendor PO IDOR block, customer PO access block, unauthenticated block | 🟢 Passing | 4 / 4 OK |
 | **Reports** | `reports/tests/test_reports.py` | Database aggregations for sales, inventory low-stock alerts, procurement spending | 🟢 Passing | 3 / 3 OK |
@@ -186,8 +187,20 @@ This document is the living single source of truth for feature development statu
   - Added `WALK_IN = 'walk_in', 'In-Store Walk-In Handover'` to `FulfillmentType`.
   - In-store walk-in shopping allows adding items while walking inside the store, checking out with zero delivery fee and no address required.
   - Implemented `POST /orders/{id}/handover/` allowing store owners to collect picked products, collect payment on spot, and hand them over directly at the counter, issuing the immutable `SalesMemo`.
-  - Added `test_multi_store_memos.py` (9/9 passing).
-- Executed full test suite across entire SaaS platform: **197 / 197 tests passing (100% pass rate)**.
+- Implemented **Phase 26: Database-Level User & Vendor Fields Across Card & Memo Models**:
+  - Added relational `user` (Customer) and `vendor` (Store Vendor) foreign keys directly to `Card` and `SalesMemo` with automatic backfill migrations and save hooks.
+  - Added `test_database_level_fields.py` (6/6 passing).
+- Implemented **Phase 27: Saved "Buy Next Time" Store Memos & Multi-Memo Planning**:
+  - Added `is_saved_for_later` and `planned_visit_date` to `Card` model.
+  - Implemented `create_saved_memo`, `save_memo_for_later`, `activate_saved_memo` (with safe merge), and `duplicate_memo` in `CardService`.
+  - Added endpoints `GET /cards/saved/`, `POST /cards/create-saved/`, `POST /cards/{id}/save-for-later/`, `POST /cards/{id}/activate/`, and `POST /cards/{id}/duplicate/`.
+  - Added `test_saved_memos.py` (7/7 passing).
+- Implemented **Phase 28: In-Store Counter POS & Quick 6-Digit Walk-In Code Lookup**:
+  - Added `walk_in_code` to `Order` (auto-generated 6-digit numeric verification code on walk-in / pickup order placement) and `walk_in_code_snapshot` to `SalesMemo`.
+  - Added `OrderRepository.get_by_walk_in_code()` and `OrderService.counter_lookup()` with vendor tenant isolation.
+  - Implemented `POST /orders/counter-lookup/` action on `OrderViewSet` enabling store owners / counter staff to instantly look up orders via 6-digit code.
+  - Added `test_counter_pos.py` (7/7 passing).
+- Executed full test suite across entire SaaS platform: **217 / 217 tests passing (100% pass rate)**.
 
 ---
 

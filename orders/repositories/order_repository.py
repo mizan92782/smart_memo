@@ -29,6 +29,21 @@ class OrderRepository:
         return Order.objects.filter(store_id=store_id, is_deleted=False).prefetch_related('items__product')
 
     @staticmethod
+    def get_by_walk_in_code(code: str, store_id: Optional[int] = None, vendor_id: Optional[int] = None) -> Optional[Order]:
+        """Fetch order by in-store counter walk-in verification code."""
+        if not code:
+            return None
+        qs = Order.objects.filter(
+            walk_in_code=code.strip(),
+            is_deleted=False
+        ).select_related('customer', 'vendor', 'store').prefetch_related('items__product')
+        if store_id is not None:
+            qs = qs.filter(store_id=store_id)
+        if vendor_id is not None:
+            qs = qs.filter(vendor_id=vendor_id)
+        return qs.order_by('-created_at').first()
+
+    @staticmethod
     def create_order(**kwargs) -> Order:
         if 'store' in kwargs and 'vendor' not in kwargs:
             kwargs['vendor'] = kwargs['store'].vendor

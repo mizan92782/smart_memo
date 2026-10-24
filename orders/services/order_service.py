@@ -1,4 +1,5 @@
 from decimal import Decimal
+from typing import Optional
 from django.db import transaction
 from django.utils import timezone
 from orders.models.order_mod import Order, OrderItem, SalesMemo, OrderStatus, PaymentStatus, PaymentMethod, FulfillmentType
@@ -467,6 +468,30 @@ class OrderService:
                 "amount": str(order.total_amount),
             }
         )
+
+        return order
+
+    @staticmethod
+    def counter_lookup(code: str, actor, store_id: Optional[int] = None) -> Order:
+        """
+        Look up a customer order at the physical store counter via 6-digit walk-in code.
+        Enforces vendor tenant isolation: vendor can only access orders for their own store.
+        """
+        if not code or not code.strip():
+            raise ValueError("Walk-in verification code is required.")
+
+        normalized_code = code.strip()
+        order = OrderRepository.get_by_walk_in_code(normalized_code)
+        if not order:
+            raise Order.DoesNotExist("No order found with the provided counter walk-in code.")
+
+        from shared.enums.enums import UserRoleEnum
+        is_staff = getattr(actor, 'role', '') in [UserRoleEnum.STAFF, UserRoleEnum.SUPERUSER] or actor.is_staff or actor.is_superuser
+        if order.store.vendor != actor and not is_staff:
+            raise PermissionError("You do not have permission to access counter orders for this store.")
+
+        if store_id is not None and order.store_id != store_id:
+            raise ValueError("The provided order code does not belong to the selected store.")
 
         return order
 
