@@ -102,10 +102,14 @@ def custom_exception_handler(exc, context):
             errors = None
             message = str(error_data) if error_data else "An error occurred"
 
+        data_payload = None
+        if hasattr(exc, 'wait') and exc.wait is not None:
+            data_payload = {"available_in_seconds": exc.wait}
+
         response.data = {
             "success": False,
             "message": str(message),
-            "data": None,
+            "data": data_payload,
             "errors": errors if errors else None,
         }
 

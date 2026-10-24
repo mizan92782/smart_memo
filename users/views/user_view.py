@@ -19,12 +19,15 @@ from users.repositories.user_repository import UserRepository
 from shared.responses.responses import custome_success_response, custome_error_response
 
 
+from shared.throtling import LoginAnonThrottle, LoginUserThrottle, SignupAnonThrottle
+
+
 class UserViewSet(viewsets.GenericViewSet):
     """ViewSet for User authentication and profile operations."""
     queryset = UserRepository.list_users()
     serializer_class = UserSerializer
 
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny], throttle_classes=[SignupAnonThrottle])
     def register(self, request):
         serializer = RegisterSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -44,7 +47,7 @@ class UserViewSet(viewsets.GenericViewSet):
             status_code=status.HTTP_201_CREATED
         )
 
-    @action(detail=False, methods=['post'], permission_classes=[AllowAny])
+    @action(detail=False, methods=['post'], permission_classes=[AllowAny], throttle_classes=[LoginAnonThrottle, LoginUserThrottle])
     def login(self, request):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -69,7 +72,7 @@ class UserViewSet(viewsets.GenericViewSet):
             status_code=status.HTTP_200_OK
         )
 
-    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], url_path='change-password')
+    @action(detail=False, methods=['post'], permission_classes=[IsAuthenticated], throttle_classes=[LoginUserThrottle], url_path='change-password')
     def change_password(self, request):
         serializer = ChangePasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

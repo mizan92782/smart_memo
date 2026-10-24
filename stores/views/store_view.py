@@ -11,6 +11,7 @@ from shared.enums.enums import UserRoleEnum
 from shared.responses.responses import custome_success_response, custome_error_response
 from shared.pagination.pagination import StandardResultsPagination
 from shared.caching.cache_service import CacheService
+from shared.throtling import NearbyDiscoveryThrottle
 
 
 
@@ -117,7 +118,7 @@ class StoreViewSet(viewsets.ModelViewSet):
             data_title="store"
         )
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], throttle_classes=[NearbyDiscoveryThrottle])
     def nearby(self, request):
         """
         Geospatial discovery endpoint.

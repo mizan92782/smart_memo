@@ -12,37 +12,29 @@ FIVE_MINUTES = 5 * 60  # 300 seconds
 # ─── Login Throttles ──────────────────────────────────────────────────────────
 
 class LoginUserThrottle(UserRateThrottle):
-    """5 login attempts per 5 minutes for authenticated users."""
+    """5 login attempts per minute for authenticated users."""
     scope = 'login_user'
-
-    def parse_rate(self, rate):
-        return (5, FIVE_MINUTES)
+    rate = '5/min'
 
 
 class LoginAnonThrottle(AnonRateThrottle):
-    """5 login attempts per 5 minutes for anonymous users."""
+    """5 login attempts per minute for anonymous users."""
     scope = 'login_anon'
-
-    def parse_rate(self, rate):
-        return (5, FIVE_MINUTES)
+    rate = '5/min'
 
 
 # ─── Signup Throttles ─────────────────────────────────────────────────────────
 
 class SignupUserThrottle(UserRateThrottle):
-    """5 signup attempts per 5 minutes for authenticated users."""
+    """5 signup attempts per minute for authenticated users."""
     scope = 'signup_user'
-
-    def parse_rate(self, rate):
-        return (5, FIVE_MINUTES)
+    rate = '5/min'
 
 
 class SignupAnonThrottle(AnonRateThrottle):
-    """5 signup attempts per 5 minutes for anonymous users."""
+    """5 signup attempts per minute for anonymous users."""
     scope = 'signup_anon'
-
-    def parse_rate(self, rate):
-        return (5, FIVE_MINUTES)
+    rate = '5/min'
 
 
 # ─── OTP Throttles ────────────────────────────────────────────────────────────
@@ -69,7 +61,13 @@ class SocialAuthThrottle(AnonRateThrottle):
     rate = '10/hour'
 
 
-# ─── API Burst Throttle ───────────────────────────────────────────────────────
+# ─── API Burst & Discovery Throttles ──────────────────────────────────────────
+
+class NearbyDiscoveryThrottle(AnonRateThrottle):
+    """30 discovery requests per minute to prevent geospatial scraping."""
+    scope = 'nearby_discovery'
+    rate = '30/min'
+
 
 class BurstRateThrottle(AnonRateThrottle):
     """

@@ -166,6 +166,20 @@ REST_FRAMEWORK = {
         'rest_framework.authentication.SessionAuthentication',
         'rest_framework.authentication.BasicAuthentication',
     ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/min',
+        'user': '1000/min',
+        'login_anon': '5/min',
+        'login_user': '10/min',
+        'signup_anon': '5/min',
+        'signup_user': '10/min',
+        'otp': '10/hour',
+        'password_reset': '5/hour',
+        'social_auth': '10/hour',
+        'nearby_discovery': '30/min',
+        'burst': '60/min',
+        'sustained': '1000/hour',
+    },
 }
 
 

@@ -1,4 +1,5 @@
 from django.test import TestCase
+from django.core.cache import cache
 from rest_framework.test import APIClient
 from rest_framework.authtoken.models import Token
 from users.models.user_mod import User
@@ -13,6 +14,7 @@ class UserLifecycleTests(TestCase):
     """
 
     def setUp(self):
+        cache.clear()
         self.client = APIClient()
         self.raw_password = 'SecurePassword123!'
         self.user = UserRepository.create_user(

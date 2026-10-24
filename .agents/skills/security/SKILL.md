@@ -11,7 +11,7 @@ description: General application security, input validation, secrets, uploads an
 - Enforce object-level authorization for every read and write.
 - Use secure secret management and environment variables; never commit secrets.
 - Configure CORS, cookies/tokens, HTTPS, CSRF protections and security headers appropriately for the chosen architecture.
-- Rate-limit authentication, search, memo submission, exports and other abuse-prone operations.
+- Rate-limit authentication, search, memo submission, exports and other abuse-prone operations: apply explicit scoped throttle classes (`LoginAnonThrottle`, `LoginUserThrottle`, `SignupAnonThrottle`, `NearbyDiscoveryThrottle`) to sensitive endpoints and return `429 Too Many Requests` with `available_in_seconds` backoff metadata.
 - Validate uploaded file type, size, content and storage access.
 - Avoid leaking stack traces, SQL, credentials, private tenant information or personal data in errors/logs.
 - Keep dependencies updated and run available security checks.
@@ -21,3 +21,4 @@ description: General application security, input validation, secrets, uploads an
 - Authorization and validation failures are tested.
 - No secrets are committed or returned.
 - Sensitive operations are rate-limited and audited where appropriate.
+- Rate limits return 429 status code with retry guidance.
