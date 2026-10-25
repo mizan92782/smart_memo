@@ -26,3 +26,4 @@ description: Vendor sales, purchase, inventory, revenue and order reports.
 - Explicitly split COD collected (`payment_status=COLLECTED`) from outstanding COD (`payment_status=PENDING` on active orders).
 - Filter stock health via `StockBalance.available <= low_stock_threshold` to generate realtime low-stock alerts without background queue delays.
 - Enforce store ownership check: `store.vendor == request.user` returning 403 Forbidden on foreign store IDs.
+- **Excel-Compatible CSV Export Engine**: `ExportService` streams accounting sales & tax, inventory valuation, procurement history, and perishable batch reports with UTF-8 BOM encoding (`\ufeff`) to prevent character distortion across spreadsheet applications. Strict tenant boundaries verify store ownership before dispatching attachment downloads.
