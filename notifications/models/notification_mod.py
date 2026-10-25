@@ -12,6 +12,8 @@ class NotificationType(models.TextChoices):
     ORDER_OUT_FOR_DELIVERY = 'order_out_for_delivery', 'Out for Delivery'
     ORDER_COMPLETED = 'order_completed', 'Order Completed'
     ORDER_CANCELLED = 'order_cancelled', 'Order Cancelled'
+    ORDER_RETURN_REQUESTED = 'order_return_requested', 'Order Return Requested'
+    ORDER_RETURN_PROCESSED = 'order_return_processed', 'Order Return Processed'
     LOW_STOCK_ALERT = 'low_stock_alert', 'Low Stock Alert'
     PURCHASE_RECEIVED = 'purchase_received', 'Purchase Received'
     SYSTEM = 'system', 'System Notification'

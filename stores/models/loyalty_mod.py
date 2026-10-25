@@ -116,6 +116,7 @@ class LoyaltyTransactionType(models.TextChoices):
     EARNED_PURCHASE = 'earned_purchase', 'Earned from Completed Order'
     REDEEMED_MEMO = 'redeemed_memo', 'Redeemed on Shopping Memo'
     REFUND_CANCELLED = 'refund_cancelled', 'Refunded from Cancelled Order'
+    RETURN_REVERSAL = 'return_reversal', 'Reversed for Returned Items'
     MANUAL_ADJUSTMENT = 'manual_adjustment', 'Manual Vendor Adjustment'
 
 

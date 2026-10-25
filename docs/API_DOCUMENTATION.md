@@ -1905,4 +1905,117 @@ All API endpoints follow the consistent JSON envelope defined in [`shared/respon
 - **Description**: Removes applied loyalty discount from draft shopping memo.
 - **Permissions**: `IsAuthenticated` (Customer / Memo Owner).
 
+---
+
+## 34. Customer Order Returns, Restocking & Thermal Credit Notes
+
+### `POST /orders/returns/request/`
+- **Description**: Customer initiates a return request for one or more items from a completed order.
+- **Permissions**: `IsAuthenticated` (Customer / Order Owner).
+- **Request Body**:
+```json
+{
+  "order_id": 14,
+  "reason": "damaged_defective",
+  "reason_notes": "Carton leaked during delivery",
+  "items": [
+    {
+      "order_item_id": 28,
+      "quantity": "1.000"
+    }
+  ]
+}
+```
+- **Response** (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Return request RET-A8F91B2C3D submitted successfully.",
+  "data": {
+    "id": 1,
+    "return_number": "RET-A8F91B2C3D",
+    "order": 14,
+    "order_number": "ORD-5B7C2E1F0A",
+    "store": 3,
+    "store_name": "Green Valley Grocery",
+    "status": "requested",
+    "reason": "damaged_defective",
+    "total_refund_amount": "45.00",
+    "items": [
+      {
+        "id": 1,
+        "product_name": "Organic Milk 1L",
+        "quantity": "1.000",
+        "unit_price": "45.00",
+        "refund_subtotal": "45.00"
+      }
+    ]
+  }
+}
+```
+
+### `GET /orders/returns/`
+- **Description**: List return requests. Customers view their own returns; vendors view returns for their store (`?as_vendor=true` or automatically scoped).
+- **Permissions**: `IsAuthenticated`.
+- **Query Parameters**:
+  - `as_vendor`: `true` to list vendor store returns.
+  - `store_id`: optional store filter.
+
+### `POST /orders/returns/{id}/process/`
+- **Description**: Store vendor approves or rejects a customer return request. If approved with `restock_inventory=true`, inventory is atomically restocked into `StockBalance.on_hand` with pessimistic row locking and logged to `StockLedgerEntry`. Reverses earned customer loyalty points/stamps proportionally.
+- **Permissions**: `IsAuthenticated` (Store Vendor or Staff).
+- **Request Body (Approval with Restock)**:
+```json
+{
+  "decision": "approved",
+  "restock_inventory": true
+}
+```
+- **Request Body (Approval with Damage Write-Off)**:
+```json
+{
+  "decision": "approved",
+  "restock_inventory": false
+}
+```
+- **Request Body (Rejection)**:
+```json
+{
+  "decision": "rejected",
+  "rejection_reason": "Seal was broken and item partially consumed."
+}
+```
+- **Response** (`200 OK`): Returns updated `OrderReturn` with status `completed` or `rejected`.
+
+### `GET /orders/returns/{id}/credit-note/?receipt_format=text`
+- **Description**: Formatted 40-column monospace printable thermal credit note / return slip for POS thermal printers.
+- **Permissions**: `IsAuthenticated` (Customer or Store Vendor).
+- **Response** (`text/plain`):
+```text
+========================================
+         GREEN VALLEY GROCERY
+     CREDIT NOTE / RETURN RECEIPT
+========================================
+Date:                   2026-10-25 06:16 UTC
+Return #:                     RET-A8F91B2C3D
+Order #:                      ORD-5B7C2E1F0A
+Customer:             customer@example.com
+Status:                            Completed
+Reason:                  Damaged / Defective
+Restocked:                               Yes
+----------------------------------------
+ITEM                QTY x REFUND   TOTAL
+----------------------------------------
+Organic Milk 1L
+  1.000 x 45.00                   -45.00
+----------------------------------------
+TOTAL REFUND:                     -45.00
+Points Adjusted:                 -4 pts
+----------------------------------------
+     Refund processed successfully
+ Keep this slip for your accounting records
+========================================
+```
+
+
 
