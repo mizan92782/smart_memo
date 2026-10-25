@@ -53,11 +53,7 @@ class StoreViewSet(viewsets.ModelViewSet):
         ):
             return StoreRepository.get_all_stores()
         if getattr(self.request.user, 'role', None) == UserRoleEnum.VENDOR:
-            if self.action in ['update', 'partial_update', 'destroy']:
-                return StoreRepository.get_by_vendor(self.request.user.id)
-            if self.request.query_params.get('my_stores') == 'true':
-                return StoreRepository.get_by_vendor(self.request.user.id)
-            return StoreRepository.get_all_stores()
+            return StoreRepository.get_by_vendor(self.request.user.id)
         return StoreRepository.get_public_active_stores()
 
     def get_serializer_class(self):
