@@ -16,7 +16,10 @@ class NotificationType(models.TextChoices):
     ORDER_RETURN_PROCESSED = 'order_return_processed', 'Order Return Processed'
     LOW_STOCK_ALERT = 'low_stock_alert', 'Low Stock Alert'
     PURCHASE_RECEIVED = 'purchase_received', 'Purchase Received'
+    STOCK_TRANSFER_DISPATCHED = 'stock_transfer_dispatched', 'Stock Transfer Dispatched'
+    STOCK_TRANSFER_RECEIVED = 'stock_transfer_received', 'Stock Transfer Received'
     SYSTEM = 'system', 'System Notification'
+
 
 
 class Notification(BaseModel):

@@ -15,6 +15,10 @@ class StockMovementType(models.TextChoices):
     DAMAGE_LOSS = 'damage_loss', 'Damage / Loss'
     RETURN = 'return', 'Customer Return'
     RECONCILIATION = 'reconciliation', 'Physical Inventory Reconciliation'
+    TRANSFER_OUT = 'transfer_out', 'Stock Transfer Out'
+    TRANSFER_IN = 'transfer_in', 'Stock Transfer In'
+    TRANSFER_CANCEL_RESTORE = 'transfer_cancel_restore', 'Transfer Cancel Restore'
+
 
 
 class StockBalance(BaseModel):
