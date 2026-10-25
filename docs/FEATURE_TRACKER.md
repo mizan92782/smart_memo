@@ -286,7 +286,15 @@ This document is the living single source of truth for feature development statu
   - Implemented `PurchaseService.generate_low_stock_purchase_orders()`: scans store inventory for low-stock products, automatically resolves suppliers (primary supplier, most recent historical supplier, or fallback default supplier), calculates optimal replenishment quantities, groups items by supplier into draft POs, avoids duplicate ordering via `include_open_order_guard`, writes audit log entries, and dispatches in-app vendor notifications.
   - Exposed endpoint: `POST /purchases/orders/generate-low-stock-pos/` with `GenerateLowStockPOSerializer`.
   - Added automated test suite: `test_low_stock_po_generation.py` (4/4 passing).
-- Executed full test suite across entire SaaS platform: **278 / 278 tests passing (100% pass rate)**.
+- Implemented **Phase 39: Accounting, Sales Tax, Inventory Valuation & Procurement CSV/Excel Export Engine**:
+  - Implemented `ExportService` in `reports/services/export_service.py` generating streaming, Excel-compatible CSV exports with UTF-8 BOM encoding (`\ufeff`).
+  - Added Sales & Tax export: Order number, date, customer email, status, payment method, payment status, subtotal, discount, delivery fee, total, and estimated sales tax (5%).
+  - Added Inventory Valuation export: SKU, barcode, product name, category, unit, on-hand, reserved, available, unit cost, selling price, total cost asset value, potential retail value, threshold, and dynamic stock status.
+  - Added Procurement export: PO number, supplier name, tax ID, order date, received date, status, items count, subtotal, charges, total cost, and reference.
+  - Added Perishable Batch export: Batch number, SKU, product name, manufacture date, expiry date, days remaining, quantities, valuation, clearance status, discount %, and clearance price.
+  - Exposed endpoints: `GET /reports/export-sales-tax/`, `GET /reports/export-inventory-valuation/`, `GET /reports/export-purchases/`, and `GET /reports/export-batches/` with strict vendor store ownership verification.
+  - Added automated test suite: `test_csv_exports.py` (5/5 passing).
+- Executed full test suite across entire SaaS platform: **283 / 283 tests passing (100% pass rate)**.
 
 ---
 

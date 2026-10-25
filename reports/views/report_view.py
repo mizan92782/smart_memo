@@ -77,3 +77,67 @@ class ReportViewSet(viewsets.ViewSet):
             end_date=serializer.validated_data.get('end_date')
         )
         return custome_success_response(data=data)
+
+    @action(detail=False, methods=['get'], url_path='export-sales-tax')
+    def export_sales_tax(self, request):
+        """Download accounting and sales tax report as UTF-8 CSV."""
+        from reports.services.export_service import ExportService
+        serializer = DateRangeFilterSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        store_id = serializer.validated_data['store_id']
+        store, err = self._get_authorized_store(request, store_id)
+        if err:
+            return err
+
+        return ExportService.export_sales_tax_csv(
+            store=store,
+            start_date=serializer.validated_data.get('start_date'),
+            end_date=serializer.validated_data.get('end_date')
+        )
+
+    @action(detail=False, methods=['get'], url_path='export-inventory-valuation')
+    def export_inventory_valuation(self, request):
+        """Download inventory valuation and stock levels as UTF-8 CSV."""
+        from reports.services.export_service import ExportService
+        serializer = StoreFilterSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        store_id = serializer.validated_data['store_id']
+        store, err = self._get_authorized_store(request, store_id)
+        if err:
+            return err
+
+        return ExportService.export_inventory_valuation_csv(store=store)
+
+    @action(detail=False, methods=['get'], url_path='export-purchases')
+    def export_purchases(self, request):
+        """Download procurement history and supplier accounts payable as UTF-8 CSV."""
+        from reports.services.export_service import ExportService
+        serializer = DateRangeFilterSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        store_id = serializer.validated_data['store_id']
+        store, err = self._get_authorized_store(request, store_id)
+        if err:
+            return err
+
+        return ExportService.export_purchases_procurement_csv(
+            store=store,
+            start_date=serializer.validated_data.get('start_date'),
+            end_date=serializer.validated_data.get('end_date')
+        )
+
+    @action(detail=False, methods=['get'], url_path='export-batches')
+    def export_batches(self, request):
+        """Download perishable batch expiry, clearance status, and valuation as UTF-8 CSV."""
+        from reports.services.export_service import ExportService
+        serializer = StoreFilterSerializer(data=request.query_params)
+        serializer.is_valid(raise_exception=True)
+
+        store_id = serializer.validated_data['store_id']
+        store, err = self._get_authorized_store(request, store_id)
+        if err:
+            return err
+
+        return ExportService.export_perishable_batches_csv(store=store)
