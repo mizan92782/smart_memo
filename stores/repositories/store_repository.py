@@ -1,6 +1,6 @@
 from typing import Optional, Dict, Any
 from decimal import Decimal
-from django.db.models import QuerySet, Sum
+from django.db.models import QuerySet, Sum, Q
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from stores.models.store_mod import Store
@@ -15,6 +15,20 @@ class StoreRepository:
     @staticmethod
     def get_by_id(store_id: int) -> Optional[Store]:
         return Store.objects.filter(pk=store_id, is_deleted=False).first()
+
+    @staticmethod
+    def get_by_slug_or_domain(slug_or_domain: str) -> Optional[Store]:
+        """Lookup active store by domain, slug, or ID for public storefront websites."""
+        clean = slug_or_domain.strip().lower()
+        alt_clean = clean[:-4] if clean.endswith('.com') else f"{clean}.com"
+        id_filter = Q(id=int(clean)) if clean.isdigit() else Q(id=-1)
+        return Store.objects.filter(is_deleted=False).filter(
+            Q(public_url_slug__iexact=clean) |
+            Q(slug__iexact=clean) |
+            Q(public_url_slug__iexact=alt_clean) |
+            Q(slug__iexact=alt_clean) |
+            id_filter
+        ).first()
 
     @staticmethod
     def get_by_vendor(vendor_id: int) -> QuerySet[Store]:

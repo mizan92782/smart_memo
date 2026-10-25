@@ -48,3 +48,44 @@ class StoreModelAndServiceTests(TestCase):
         StoreRepository.delete_store(store)
         self.assertTrue(store.is_deleted)
         self.assertIsNone(StoreRepository.get_by_id(store.id))
+
+    def test_store_branding_and_public_url_slug(self):
+        store = StoreService.register_store(
+            vendor=self.vendor,
+            name="Apex Supermarket",
+            owner_name="Alice Apex",
+            logo_url="https://images.unsplash.com/logo.jpg",
+            cover_photo_url="https://images.unsplash.com/cover.jpg",
+            phone_number="1234567890",
+            secondary_phone="0987654321",
+            whatsapp_number="1234567890",
+            shop_type="hybrid",
+            website_url="https://apexsuper.com"
+        )
+        self.assertEqual(store.owner_name, "Alice Apex")
+        self.assertEqual(store.logo_url, "https://images.unsplash.com/logo.jpg")
+        self.assertEqual(store.cover_photo_url, "https://images.unsplash.com/cover.jpg")
+        self.assertEqual(store.secondary_phone, "0987654321")
+        self.assertEqual(store.whatsapp_number, "1234567890")
+        self.assertEqual(store.shop_type, "hybrid")
+        self.assertEqual(store.public_url_slug, "apex-supermarket.com")
+
+    def test_public_storefront_endpoint(self):
+        store = StoreService.register_store(
+            vendor=self.vendor,
+            name="Green Valley Organics",
+            owner_name="George Green",
+            shop_type="online_and_physical"
+        )
+        # Test resolving by vanity domain slug
+        response = self.client.get(f"/stores/public-store/{store.public_url_slug}/")
+        self.assertEqual(response.status_code, 200)
+        json_data = response.json()
+        self.assertIn("storefront", json_data.get("data", {}))
+        self.assertEqual(json_data["data"]["storefront"]["store"]["name"], "Green Valley Organics")
+        self.assertEqual(json_data["data"]["storefront"]["store"]["owner_name"], "George Green")
+        self.assertEqual(json_data["data"]["storefront"]["public_url"], f"/Eshopping/{store.public_url_slug}/")
+
+        # Test resolving by bare slug
+        response_bare = self.client.get(f"/stores/public-store/{store.slug}/")
+        self.assertEqual(response_bare.status_code, 200)

@@ -35,4 +35,10 @@ description: Vendor store profile, location, opening hours, delivery settings an
 - **Instant O(1) Public Ratings**: Stores maintain `average_rating` (`DecimalField(max_digits=3, decimal_places=2)`) and `total_reviews` (`IntegerField`), recalculated via SQL aggregations (`Avg('rating')`, `Count('id')`) upon review creation, update, or deletion. Public discovery and listings read this directly in O(1) time without expensive subqueries.
 - **Vendor Response**: Store owners can submit an official reply (`vendor_reply`, `vendor_replied_at`) to reviews on their store (`POST /stores/reviews/{id}/reply/`).
 - **Review Deletion & Invalidation**: Customers can delete their own reviews and staff can moderate reviews (`DELETE /stores/reviews/{id}/`), automatically triggering store rating recalculation and cache invalidation (`CacheService.invalidate_store_profile`).
+- **Public Store Branding & Standalone Merchant Website URLs**:
+  - Stores maintain comprehensive public branding assets: `owner_name`, `logo_url`, `cover_photo_url`, `secondary_phone`, `whatsapp_number`, `website_url`, `social_links`, and `shop_type` (`hybrid`, `physical_only`, `online_only`).
+  - Stores automatically generate a `public_url_slug` (e.g., `store-name.com` or custom vanity domain slug) on save.
+  - Public resolver `GET /stores/public-store/{slug_or_domain}/` resolves stores by vanity domain (`shopname.com`), bare slug (`shopname`), or store ID with tenant caching.
+  - Returns complete merchant website package: store branding, contact channels, live open/closed status, categories, and products with pre-fetched multi-image galleries.
+  - Frontend renders standalone merchant web store at `/Eshopping/:storeSlug` with one-click URL copy, WhatsApp integration, and direct memo adding.
 

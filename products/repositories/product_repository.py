@@ -8,27 +8,27 @@ class ProductRepository:
 
     @staticmethod
     def get_all() -> QuerySet[Product]:
-        return Product.objects.filter(is_deleted=False).select_related('category', 'store').order_by('name')
+        return Product.objects.filter(is_deleted=False).select_related('category', 'store').prefetch_related('images').order_by('name')
 
     @staticmethod
     def get_by_store(store_id: int) -> QuerySet[Product]:
-        return Product.objects.filter(store_id=store_id, is_deleted=False).select_related('category', 'store').order_by('name')
+        return Product.objects.filter(store_id=store_id, is_deleted=False).select_related('category', 'store').prefetch_related('images').order_by('name')
 
     @staticmethod
     def get_by_id(product_id: int) -> Optional[Product]:
-        return Product.objects.filter(pk=product_id, is_deleted=False).select_related('category', 'store').first()
+        return Product.objects.filter(pk=product_id, is_deleted=False).select_related('category', 'store').prefetch_related('images').first()
 
     @staticmethod
     def get_by_category_id(category_id: int) -> QuerySet[Product]:
-        return Product.objects.filter(category_id=category_id, is_deleted=False).select_related('store').order_by('name')
+        return Product.objects.filter(category_id=category_id, is_deleted=False).select_related('store').prefetch_related('images').order_by('name')
 
     @staticmethod
     def get_in_stock() -> QuerySet[Product]:
-        return Product.objects.filter(stock__gt=0, is_deleted=False, is_active=True).select_related('category', 'store').order_by('name')
+        return Product.objects.filter(stock__gt=0, is_deleted=False, is_active=True).select_related('category', 'store').prefetch_related('images').order_by('name')
 
     @staticmethod
     def search_catalog(query: str = None, store_id: int = None, category_id: int = None) -> QuerySet[Product]:
-        qs = Product.objects.filter(is_deleted=False, is_active=True, store__is_active=True).select_related('category', 'store')
+        qs = Product.objects.filter(is_deleted=False, is_active=True, store__is_active=True).select_related('category', 'store').prefetch_related('images')
         if store_id:
             qs = qs.filter(store_id=store_id)
         if category_id:

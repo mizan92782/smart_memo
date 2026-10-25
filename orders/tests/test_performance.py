@@ -85,9 +85,8 @@ class QueryOptimizationTestCase(TestCase):
 
     def test_catalog_search_query_count_bounded(self):
         """Catalog search endpoint executes bounded queries with select_related for store & category."""
-        # Warmup and execute with query capture
-        with self.assertNumQueries(2):
-            # 1 query for COUNT (pagination), 1 query for SELECT with JOINs
+        # 1 query for COUNT (pagination), 1 query for SELECT with JOINs, 1 prefetch query for gallery images
+        with self.assertNumQueries(3):
             res = self.client.get("/products/api/catalog/?search=Bulk")
             self.assertEqual(res.status_code, status.HTTP_200_OK)
 

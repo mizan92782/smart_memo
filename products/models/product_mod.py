@@ -113,6 +113,31 @@ class Product(BaseModel):
             return self.offered_price
         return self.price
 
+    @property
+    def primary_image_url(self) -> str:
+        """Return primary gallery image URL or main image URL."""
+        if hasattr(self, '_prefetched_objects_cache') and 'images' in self._prefetched_objects_cache:
+            imgs = [img for img in self._prefetched_objects_cache['images'] if not getattr(img, 'is_deleted', False)]
+            for img in imgs:
+                if img.is_primary and img.effective_url:
+                    return img.effective_url
+            for img in imgs:
+                if img.effective_url:
+                    return img.effective_url
+        elif hasattr(self, 'images'):
+            primary = self.images.filter(is_primary=True, is_deleted=False).first()
+            if primary and primary.effective_url:
+                return primary.effective_url
+            first = self.images.filter(is_deleted=False).first()
+            if first and first.effective_url:
+                return first.effective_url
+        if self.image:
+            try:
+                return self.image.url
+            except Exception:
+                pass
+        return ""
+
     def save(self, *args, **kwargs):
         self.name = self.name.title()
 

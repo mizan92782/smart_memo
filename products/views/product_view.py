@@ -8,7 +8,7 @@ from categories.models.category_mod import Category
 from stores.models.store_mod import Store
 from products.repositories.product_repository import ProductRepository
 from products.services.product_service import ProductService
-from products.serializers.product_ser import ProductSerializer
+from products.serializers.product_ser import ProductSerializer, ProductImageSerializer
 from shared.permissions.permissions import IsStoreOwner, IsVendor
 from shared.responses.responses import custome_success_response, custome_error_response
 from shared.caching.cache_service import CacheService
@@ -40,19 +40,22 @@ class ProductViewSet(viewsets.ModelViewSet):
     REST API ViewSet for Products.
     - Public catalog search & discovery.
     - Vendor product management scoped to owned stores.
+    - Product gallery image management.
     """
     serializer_class = ProductSerializer
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'catalog', 'barcode_lookup']:
             return [AllowAny()]
+        if self.action == 'images' and self.request.method == 'GET':
+            return [AllowAny()]
         return [IsAuthenticated(), IsVendor()]
 
     def get_queryset(self):
         if self.request.user.is_authenticated and hasattr(self.request.user, 'role') and self.request.user.role == 'vendor':
             vendor_stores = self.request.user.stores.values_list('id', flat=True)
-            return Product.objects.filter(store_id__in=vendor_stores, is_deleted=False).select_related('category', 'store')
-        return Product.objects.filter(is_deleted=False, is_active=True).select_related('category', 'store')
+            return Product.objects.filter(store_id__in=vendor_stores, is_deleted=False).select_related('category', 'store').prefetch_related('images')
+        return Product.objects.filter(is_deleted=False, is_active=True).select_related('category', 'store').prefetch_related('images')
 
     def create(self, request, *args, **kwargs):
         store_id = request.data.get('store') or request.data.get('store_id')
@@ -177,3 +180,75 @@ class ProductViewSet(viewsets.ModelViewSet):
             )
         except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['get', 'post'], url_path='images')
+    def images(self, request, pk=None):
+        """
+        GET /products/{id}/images/ -> List gallery images for a product.
+        POST /products/{id}/images/ -> Upload/attach new gallery image for product.
+        """
+        product = self.get_object()
+        if request.method == 'GET':
+            serializer = ProductImageSerializer(product.images.all(), many=True)
+            return custome_success_response(
+                message="Product images retrieved successfully.",
+                data=serializer.data
+            )
+
+        if product.store and product.store.vendor != request.user and not request.user.is_superuser:
+            return custome_error_response("You do not own this store.", status_code=status.HTTP_403_FORBIDDEN)
+
+        serializer = ProductImageSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        img = serializer.save(product=product)
+        if product.store_id:
+            CacheService.invalidate_catalog(product.store_id)
+        return custome_success_response(
+            message="Product image added successfully.",
+            data=ProductImageSerializer(img).data,
+            status_code=status.HTTP_201_CREATED
+        )
+
+    @action(detail=True, methods=['delete', 'post'], url_path=r'images/(?P<image_id>[^/.]+)')
+    def manage_image(self, request, pk=None, image_id=None):
+        """
+        DELETE /products/{id}/images/{image_id}/ -> Delete a gallery image.
+        POST /products/{id}/images/{image_id}/ -> Update image or set as primary (action=set_primary).
+        """
+        product = self.get_object()
+        if product.store and product.store.vendor != request.user and not request.user.is_superuser:
+            return custome_error_response("You do not own this store.", status_code=status.HTTP_403_FORBIDDEN)
+
+        image = product.images.filter(pk=image_id).first()
+        if not image:
+            return custome_error_response("Product image not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'DELETE':
+            image.delete()
+            if product.store_id:
+                CacheService.invalidate_catalog(product.store_id)
+            return custome_success_response(
+                message="Product image deleted successfully.",
+                status_code=status.HTTP_200_OK
+            )
+
+        action_type = request.data.get('action') or request.query_params.get('action')
+        if action_type == 'set_primary' or request.data.get('is_primary') is True:
+            image.is_primary = True
+            image.save()
+            if product.store_id:
+                CacheService.invalidate_catalog(product.store_id)
+            return custome_success_response(
+                message="Primary product image updated successfully.",
+                data=ProductImageSerializer(image).data
+            )
+
+        serializer = ProductImageSerializer(image, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        updated_img = serializer.save()
+        if product.store_id:
+            CacheService.invalidate_catalog(product.store_id)
+        return custome_success_response(
+            message="Product image updated successfully.",
+            data=ProductImageSerializer(updated_img).data
+        )

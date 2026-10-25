@@ -4,6 +4,7 @@ from products.views.product_view import ProductList, Category_Products_ListView,
 
 router = DefaultRouter()
 router.register(r'api', ProductViewSet, basename='product-api')
+router.register(r'', ProductViewSet, basename='product')
 
 urlpatterns = [
     path('product_list', ProductList.as_view(), name='product-list'),

@@ -10,7 +10,10 @@ class StoreSerializer(BaseModelSerializer):
     class Meta:
         model = Store
         fields = [
-            'id', 'name', 'slug', 'description', 'phone_number', 'email',
+            'id', 'name', 'slug', 'public_url_slug', 'description',
+            'owner_name', 'logo_url', 'cover_photo_url',
+            'phone_number', 'secondary_phone', 'whatsapp_number', 'email',
+            'website_url', 'social_links', 'shop_type',
             'address', 'latitude', 'longitude', 'is_active',
             'is_verified', 'verified_at', 'verification_notes',
             'opening_time', 'closing_time', 'delivery_enabled',
@@ -37,7 +40,10 @@ class PublicStoreSerializer(serializers.ModelSerializer):
     class Meta:
         model = Store
         fields = [
-            'id', 'name', 'slug', 'description', 'phone_number', 'email',
+            'id', 'name', 'slug', 'public_url_slug', 'description',
+            'owner_name', 'logo_url', 'cover_photo_url',
+            'phone_number', 'secondary_phone', 'whatsapp_number', 'email',
+            'website_url', 'social_links', 'shop_type',
             'address', 'latitude', 'longitude', 'is_active',
             'opening_time', 'closing_time', 'delivery_enabled',
             'pickup_enabled', 'delivery_fee', 'min_order_amount',

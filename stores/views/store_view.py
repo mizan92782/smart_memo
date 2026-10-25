@@ -29,7 +29,7 @@ class StoreViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsPagination
 
     def get_permissions(self):
-        if self.action in ['public', 'public_detail', 'nearby', 'calculate_delivery_fee']:
+        if self.action in ['public', 'public_detail', 'public_storefront', 'nearby', 'calculate_delivery_fee']:
             return [AllowAny()]
         if self.action == 'reviews':
             if self.request.method == 'GET':
@@ -120,6 +120,50 @@ class StoreViewSet(viewsets.ModelViewSet):
             message="Store detail retrieved successfully.",
             data=serializer.data,
             data_title="store"
+        )
+
+    @action(detail=False, methods=['get'], permission_classes=[AllowAny], url_path=r'public-store/(?P<slug_or_domain>[^/]+)')
+    def public_storefront(self, request, slug_or_domain=None):
+        """
+        Public storefront resolver for merchant websites.
+        Consists of URLs like /Eshopping/shopname.com/ or /Eshopping/:slug.
+        Resolves store by public_url_slug or slug or ID.
+        Returns complete store branding info, owner details, operating hours, categories, and active products with images.
+        """
+        if not slug_or_domain:
+            return custome_error_response("Store identifier or domain is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        store = StoreRepository.get_by_slug_or_domain(slug_or_domain)
+        if not store or not store.is_active:
+            return custome_error_response("Store website not found or inactive.", status_code=status.HTTP_404_NOT_FOUND)
+
+        from categories.models.category_mod import Category
+        from categories.serializers.category_ser import CategorySerializer
+        from products.models.product_mod import Product
+        from products.serializers.product_ser import ProductSerializer
+
+        store_data = PublicStoreSerializer(store, context={'request': request}).data
+
+        categories = Category.objects.filter(store=store, is_deleted=False)
+        category_data = CategorySerializer(categories, many=True).data
+
+        products = Product.objects.filter(
+            store=store,
+            is_deleted=False,
+            is_active=True
+        ).select_related('category').prefetch_related('images').order_by('name')
+        product_data = ProductSerializer(products, many=True).data
+
+        return custome_success_response(
+            message=f"Storefront for '{store.name}' retrieved.",
+            data={
+                "store": store_data,
+                "categories": category_data,
+                "products": product_data,
+                "product_count": len(product_data),
+                "public_url": f"/Eshopping/{store.public_url_slug}/",
+            },
+            data_title="storefront"
         )
 
     @action(detail=False, methods=['get'], throttle_classes=[NearbyDiscoveryThrottle])

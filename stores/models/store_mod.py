@@ -18,7 +18,24 @@ class Store(BaseModel):
     slug = models.SlugField(max_length=220, unique=True, blank=True)
     description = models.TextField(blank=True, default="")
     phone_number = models.CharField(max_length=30, blank=True, default="")
+    secondary_phone = models.CharField(max_length=30, blank=True, default="")
+    whatsapp_number = models.CharField(max_length=30, blank=True, default="")
     email = models.EmailField(blank=True, default="")
+    owner_name = models.CharField(max_length=150, blank=True, default="")
+    logo_url = models.URLField(max_length=500, blank=True, default="")
+    cover_photo_url = models.URLField(max_length=500, blank=True, default="")
+    website_url = models.URLField(max_length=255, blank=True, default="")
+    social_links = models.JSONField(default=dict, blank=True)
+    shop_type = models.CharField(
+        max_length=30,
+        choices=[
+            ('hybrid', 'Physical Store + Online Delivery'),
+            ('physical_only', 'Physical Walk-In Only'),
+            ('online_only', 'Online Delivery Only')
+        ],
+        default='hybrid'
+    )
+    public_url_slug = models.CharField(max_length=200, blank=True, default="", db_index=True)
     address = models.TextField(blank=True, default="")
     latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
@@ -49,6 +66,11 @@ class Store(BaseModel):
                 candidate = f"{base_slug}-{counter}"
                 counter += 1
             self.slug = candidate
+
+        if not self.public_url_slug:
+            clean_slug = self.slug.lower()
+            self.public_url_slug = f"{clean_slug}.com" if not clean_slug.endswith('.com') else clean_slug
+
         super().save(*args, **kwargs)
 
     def __str__(self):
