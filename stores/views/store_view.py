@@ -471,26 +471,74 @@ class StoreViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['get', 'post'], url_path='memo', permission_classes=[IsAuthenticated])
     def store_memo(self, request, pk=None):
         """
-        GET /stores/{id}/memo/ or POST /stores/{id}/memo/
-        Retrieve or initialize the authenticated customer's draft memo specifically for this store.
-        Accepts optional 'shopping_mode' ('walk_in' or 'remote').
+        GET /stores/{id}/memo/ — read the customer's current draft memo for this store.
+        Pass ?create=false to peek without opening one (returns null when absent), so the
+        UI can require the customer to name a memo before shopping.
+
+        POST /stores/{id}/memo/ — open a memo for this store.
+        Accepts 'title' (memo name) and 'shopping_mode' ('walk_in' or 'remote').
+        Pass 'force_new': true to start an *additional* memo alongside any existing
+        ones — a shopper can run several named memos at the same store at once
+        (e.g. "Weekly Grocery" and "Office Supplies") and check them out separately.
+        Without it, an existing draft is reused and renamed.
         """
         store = StoreRepository.get_by_id(pk)
         if not store:
             return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
 
-        shopping_mode = request.data.get('shopping_mode') if request.method == 'POST' else request.query_params.get('shopping_mode', 'remote')
+        is_post = request.method == 'POST'
+        shopping_mode = request.data.get('shopping_mode') if is_post else request.query_params.get('shopping_mode', 'remote')
         if not shopping_mode:
             shopping_mode = 'remote'
+        title = (request.data.get('title') or '').strip() if is_post else None
+        force_new = bool(request.data.get('force_new')) if is_post else False
 
         from cards.services.card_service import CardService
         from cards.serializers.card_ser import CardSerializer
         try:
+            if not is_post and request.query_params.get('create', 'true').lower() in ['false', '0']:
+                card = CardService.get_active_memo(user=request.user, store=store)
+                if not card:
+                    return custome_success_response(
+                        message=f"No draft memo open for '{store.name}' yet.",
+                        data=None
+                    )
+                return custome_success_response(
+                    message=f"Draft memo for '{store.name}' retrieved.",
+                    data=CardSerializer(card).data
+                )
+
+            if force_new:
+                card = CardService.create_store_memo(
+                    user=request.user,
+                    store=store,
+                    title=title or None,
+                    shopping_mode=shopping_mode
+                )
+                return custome_success_response(
+                    message=f"New memo opened for '{store.name}'.",
+                    data=CardSerializer(card).data,
+                    status_code=status.HTTP_201_CREATED
+                )
+
             card = CardService.get_or_create_active_memo(
                 user=request.user,
                 store=store,
-                shopping_mode=shopping_mode
+                shopping_mode=shopping_mode,
+                title=title or None
             )
+            # An existing memo keeps its identity, but the customer may rename it or
+            # switch between walk-in and from-home shopping when re-opening it.
+            if is_post:
+                changed = []
+                if title and card.title != title:
+                    card.title = title
+                    changed.append('title')
+                if shopping_mode and card.shopping_mode != shopping_mode:
+                    card.shopping_mode = shopping_mode
+                    changed.append('shopping_mode')
+                if changed:
+                    card.save(update_fields=changed + ['updated_at'])
             return custome_success_response(
                 message=f"Draft memo for '{store.name}' retrieved.",
                 data=CardSerializer(card).data

@@ -33,6 +33,14 @@ class PaymentStatus(models.TextChoices):
 
 class PaymentMethod(models.TextChoices):
     COD = 'cod', 'Cash on Delivery'
+    CASH_COUNTER = 'cash_counter', 'Cash at Store Counter'
+    BKASH = 'bkash', 'bKash'
+    NAGAD = 'nagad', 'Nagad'
+
+    @classmethod
+    def online_methods(cls):
+        """Mobile financial service methods that are not settled in physical cash."""
+        return {cls.BKASH, cls.NAGAD}
 
 
 class Order(BaseModel):

@@ -58,12 +58,23 @@ class CardViewSet(viewsets.ModelViewSet):
         """Retrieve or initialize the active draft memo for the customer, optionally scoped to a store."""
         store_id = request.query_params.get('store_id')
         shopping_mode = request.query_params.get('shopping_mode', 'remote')
+        # create=false lets the client check whether a memo exists without implicitly
+        # opening one, so the UI can prompt the customer to name their memo first.
+        should_create = request.query_params.get('create', 'true').lower() not in ['false', '0']
         try:
-            card = CardService.get_or_create_active_memo(
-                user=request.user,
-                store_id=store_id,
-                shopping_mode=shopping_mode
-            )
+            if should_create:
+                card = CardService.get_or_create_active_memo(
+                    user=request.user,
+                    store_id=store_id,
+                    shopping_mode=shopping_mode
+                )
+            else:
+                card = CardService.get_active_memo(user=request.user, store_id=store_id)
+                if not card:
+                    return custome_success_response(
+                        message="No draft shopping memo open for this store yet.",
+                        data=None
+                    )
             data = CardSerializer(card).data
             sort_by = request.query_params.get('sort_by')
             if sort_by == 'aisle':
@@ -257,6 +268,7 @@ class CardViewSet(viewsets.ModelViewSet):
         address_id = request.data.get('address_id')
         notes = request.data.get('notes', '')
         idempotency_key = request.data.get('idempotency_key')
+        payment_method = request.data.get('payment_method', 'cod')
 
         if fulfillment_type == 'delivery' and not delivery_address and not address_id:
             from users.repositories.address_repository import AddressRepository
@@ -279,7 +291,8 @@ class CardViewSet(viewsets.ModelViewSet):
                 delivery_address=delivery_address,
                 idempotency_key=idempotency_key,
                 notes=notes,
-                address_id=address_id
+                address_id=address_id,
+                payment_method=payment_method
             )
             return custome_success_response(
                 message="Order placed successfully from shopping memo.",
@@ -291,6 +304,36 @@ class CardViewSet(viewsets.ModelViewSet):
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
         except Exception as exc:
             return custome_error_response(f"Checkout failed: {str(exc)}", status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['get'], url_path='for-store')
+    def for_store(self, request):
+        """
+        GET /cards/for-store/?store_id=<id>
+        Every memo this customer has at one store, split into the drafts they can
+        still shop and the ones already checked out, so the store page can show
+        "your memos here" alongside past ones. Memos never cross stores.
+        """
+        store_id = request.query_params.get('store_id')
+        if not store_id:
+            return custome_error_response(
+                "store_id is required.", status_code=status.HTTP_400_BAD_REQUEST
+            )
+
+        cards = CardRepository.get_by_user(
+            user_id=request.user.id, store_id=store_id, is_saved_for_later=False
+        ).order_by('-created_at')
+
+        active, past = [], []
+        for card in cards:
+            (past if card.is_completed else active).append(card)
+
+        return custome_success_response(
+            message="Store memos retrieved.",
+            data={
+                'active': CardSerializer(active, many=True).data,
+                'past': CardSerializer(past, many=True).data,
+            }
+        )
 
     @action(detail=False, methods=['get'])
     def saved(self, request):

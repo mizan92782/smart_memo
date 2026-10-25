@@ -54,8 +54,20 @@ class ProductViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         if self.request.user.is_authenticated and hasattr(self.request.user, 'role') and self.request.user.role == 'vendor':
             vendor_stores = self.request.user.stores.values_list('id', flat=True)
-            return Product.objects.filter(store_id__in=vendor_stores, is_deleted=False).select_related('category', 'store').prefetch_related('images')
-        return Product.objects.filter(is_deleted=False, is_active=True).select_related('category', 'store').prefetch_related('images')
+            qs = Product.objects.filter(store_id__in=vendor_stores, is_deleted=False)
+        else:
+            qs = Product.objects.filter(is_deleted=False, is_active=True)
+
+        # A store's catalog must only ever show that store's own products — a memo
+        # rejects items from any other store, so listing them is misleading.
+        store_id = self.request.query_params.get('store_id')
+        if store_id:
+            qs = qs.filter(store_id=store_id)
+        category_id = self.request.query_params.get('category_id')
+        if category_id:
+            qs = qs.filter(category_id=category_id)
+
+        return qs.select_related('category', 'store').prefetch_related('images')
 
     def create(self, request, *args, **kwargs):
         store_id = request.data.get('store') or request.data.get('store_id')

@@ -40,6 +40,7 @@ class OrderSerializer(serializers.ModelSerializer):
     customer_email = serializers.EmailField(source='customer.email', read_only=True)
     vendor_email = serializers.EmailField(source='vendor.email', read_only=True, default=None)
     qr_code_data_uri = serializers.SerializerMethodField()
+    payment_method_display = serializers.CharField(source='get_payment_method_display', read_only=True)
 
     class Meta:
         model = Order
@@ -49,7 +50,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'delivery_address', 'delivery_fee', 'subtotal',
             'coupon_code', 'discount_amount', 'loyalty_points_redeemed', 'loyalty_discount_amount',
             'loyalty_points_earned', 'loyalty_stamps_earned',
-            'total_amount', 'payment_method', 'payment_status',
+            'total_amount', 'payment_method', 'payment_method_display', 'payment_status',
             'idempotency_key', 'notes', 'accepted_at',
             'preparing_at', 'dispatched_at',
             'completed_at', 'cancelled_at', 'paid_at',
@@ -64,7 +65,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'store_name', 'status', 'walk_in_code', 'qr_code_data_uri', 'delivery_fee', 'subtotal',
             'coupon_code', 'discount_amount', 'loyalty_points_redeemed', 'loyalty_discount_amount',
             'loyalty_points_earned', 'loyalty_stamps_earned',
-            'total_amount', 'payment_status', 'accepted_at',
+            'total_amount', 'payment_method_display', 'payment_status', 'accepted_at',
             'preparing_at', 'dispatched_at',
             'completed_at', 'cancelled_at', 'paid_at',
             'payment_collected_by', 'customer_phone_snapshot',

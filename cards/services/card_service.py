@@ -27,6 +27,41 @@ class CardService:
         )
 
     @staticmethod
+    def create_store_memo(user, store, title: str = None, shopping_mode: str = 'remote') -> Card:
+        """
+        Start an additional draft memo at a store the customer is already shopping.
+        Several named memos can be open at one store at the same time; each is an
+        independent basket and checks out on its own.
+        """
+        if store is None:
+            raise ValueError("A memo must belong to a store.")
+        if not store.is_active:
+            raise ValueError(f"Store '{store.name}' is not currently active.")
+        return Card.objects.create(
+            user=user,
+            store=store,
+            vendor=store.vendor,
+            title=(title or '').strip() or f"{store.name} Memo",
+            shopping_mode=shopping_mode or 'remote',
+            is_saved_for_later=False,
+            is_completed=False,
+        )
+
+    @staticmethod
+    def get_active_memo(user, store=None, store_id=None):
+        """Fetch the existing draft memo without creating one; returns None when the
+        customer has not opened a memo for this store yet."""
+        if store_id and not store:
+            from stores.repositories.store_repository import StoreRepository
+            store = StoreRepository.get_by_id(store_id)
+            if not store:
+                raise ValueError("Store not found.")
+        return CardRepository.get_active_card_for_user(
+            user_id=user.id,
+            store_id=store.id if store else None
+        )
+
+    @staticmethod
     def add_product_to_card(card_id: int, product_id: int, quantity: Decimal = Decimal('1'), actor=None) -> CardItem:
         """Add product to card enforcing single-store rule, availability, and memo ownership."""
         card = CardRepository.get_by_id(card_id)
@@ -147,7 +182,8 @@ class CardService:
         delivery_address: str = "",
         idempotency_key: str = None,
         notes: str = "",
-        address_id: int = None
+        address_id: int = None,
+        payment_method: str = 'cod'
     ):
         """
         Transition draft card to submitted order.
@@ -164,7 +200,8 @@ class CardService:
             delivery_address=delivery_address,
             idempotency_key=idempotency_key,
             notes=notes,
-            address_id=address_id
+            address_id=address_id,
+            payment_method=payment_method
         )
 
     @staticmethod

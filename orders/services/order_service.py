@@ -22,7 +22,8 @@ class OrderService:
         delivery_address: str = "",
         idempotency_key: str = None,
         notes: str = "",
-        address_id: int = None
+        address_id: int = None,
+        payment_method: str = PaymentMethod.COD
     ) -> Order:
         """
         Creates an Order from a customer's draft Card and atomically reserves stock.
@@ -48,6 +49,16 @@ class OrderService:
             raise ValueError(f"Store '{card.store.name}' does not support in-store pickup.")
         if fulfillment_type == FulfillmentType.DELIVERY and not card.store.delivery_enabled:
             raise ValueError(f"Store '{card.store.name}' does not support home delivery.")
+
+        # Payment method policy: in-store handovers are settled in physical cash at the counter,
+        # so mobile financial services are only offered for from-home delivery orders.
+        if payment_method not in PaymentMethod.values:
+            raise ValueError(f"Unsupported payment method '{payment_method}'.")
+        if fulfillment_type != FulfillmentType.DELIVERY and payment_method in PaymentMethod.online_methods():
+            raise ValueError(
+                f"'{PaymentMethod(payment_method).label}' is only available for home delivery orders. "
+                "In-store orders are paid in cash at the counter."
+            )
 
         # Authoritative catalog price and product availability revalidation
         for item in items:
@@ -125,7 +136,7 @@ class OrderService:
             discount_amount=discount_amount,
             loyalty_discount_amount=loyalty_discount_amount,
             total_amount=total_amount,
-            payment_method=PaymentMethod.COD,
+            payment_method=payment_method,
             payment_status=PaymentStatus.PENDING,
             idempotency_key=idempotency_key,
             notes=notes,

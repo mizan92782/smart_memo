@@ -64,6 +64,7 @@ Whenever you update or introduce a feature in the backend:
 | **30** | **Vendor Store Branding Hero, Hot Products (Bestsellers) & Order Status Lifecycle** | `Store`, `Order` (status machine), `OrderItem`, `Product` | `GET /reports/vendor-summary/?store_id=`<br>`GET /orders/?as_vendor=true`<br>`POST /orders/{id}/accept/`<br>`POST /orders/{id}/prepare/`<br>`POST /orders/{id}/dispatch/`<br>`POST /orders/{id}/fulfill/`<br>`POST /orders/{id}/cancel/` | `vendorApi.getReports`<br>`ordersApi.getOrders`<br>`ordersApi.acceptOrder`<br>`ordersApi.prepareOrder`<br>`ordersApi.dispatchOrder`<br>`ordersApi.fulfillOrder`<br>`ordersApi.cancelOrder` | [`VendorDashboardPage.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/pages/vendor/VendorDashboardPage.jsx)<br>Cover/Profile Banner, Hot Products Tab, Order Lifecycle Action Buttons | 🟢 SYNCHRONIZED |
 | **31** | **Vendor Custom Categories, Product Creation Under Category, and Overall & Category-Wise Sales Reports & Charts** | `Category` (store FK), `Product` (category FK, tenant validation), `OrderItem`, `Order` | `GET / POST /categories/`<br>`GET / POST /categories/api/`<br>`POST /products/`<br>`GET /reports/category-sales/?store_id=`<br>`GET /reports/sales-trends/?store_id=&days=` | `catalogApi.getCategories`<br>`catalogApi.createCategory`<br>`catalogApi.createProduct`<br>`vendorApi.getCategorySales`<br>`vendorApi.getSalesTrends` | [`VendorDashboardPage.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/pages/vendor/VendorDashboardPage.jsx)<br>[`ProductCatalogPage.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/pages/vendor/ProductCatalogPage.jsx)<br>Category Creator Modal, Product under Category Modal, 14-Day Timeline Chart, Category Sales Distribution & Breakdown Ledger | 🟢 SYNCHRONIZED |
 | **33** | **Modern Left-Aligned Executive Vendor Dashboard & UI Overhaul** | `Store`, `Order`, `Category`, `Product` | `GET /stores/`<br>`GET /reports/vendor-summary/`<br>`GET /reports/sales-trends/`<br>`GET /reports/category-sales/`<br>`GET /orders/?as_vendor=true`<br>`GET /categories/api/` | `storesApi.getStores`<br>`vendorApi.getReports`<br>`vendorApi.getSalesTrends`<br>`vendorApi.getCategorySales`<br>`ordersApi.getOrders`<br>`catalogApi.getCategories` | [`VendorDashboardPage.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/pages/vendor/VendorDashboardPage.jsx)<br>Executive Gradient Left Sidebar, Quick Multi-Store Switcher, Glowing Metric KPI Cards, Sales Velocity Chart, Clean Deduplicated Tabs, Zero Emojis, 100% Vector SVG Icons | 🟢 SYNCHRONIZED |
+| **34** | **Named Per-Store Memo Gate & Dual-Channel Payment Methods (COD / bKash / Nagad)** | `Card` (`title`, `shopping_mode`, `store` FK), `Order` (`payment_method`: `cod`, `cash_counter`, `bkash`, `nagad`) | `GET /stores/{id}/memo/?create=false` (peek, returns `null`)<br>`POST /stores/{id}/memo/` (`title`, `shopping_mode`)<br>`GET /cards/active/?store_id=&create=false`<br>`PATCH /cards/{id}/` (rename)<br>`POST /cards/{id}/checkout/` (`payment_method`, `address_id`, `notes`) | `storesApi.peekStoreMemo`<br>`storesApi.openStoreMemo`<br>`memoApi.getActiveMemo(storeId, mode, { create })`<br>`memoApi.renameMemo`<br>`memoApi.checkout` | [`MemoStartModal.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/components/customer/MemoStartModal.jsx)<br>[`MemoContext.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/context/MemoContext.jsx)<br>[`StoreDetailPage.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/pages/customer/StoreDetailPage.jsx)<br>[`PublicStorefrontPage.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/pages/customer/PublicStorefrontPage.jsx)<br>[`ActiveMemoPage.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/pages/customer/ActiveMemoPage.jsx)<br>[`CheckoutPage.jsx`](file:///home/mizan/Desktop/Smart_Memo_Frontend/src/pages/customer/CheckoutPage.jsx)<br>Name-Your-Memo Gate, Per-Store Memo Isolation, Inline Memo Rename, Payment Method Picker | 🟢 SYNCHRONIZED |
 
 ---
 
@@ -80,3 +81,61 @@ When building a new backend feature, register it here first before coding:
 ---
 
 *Last Synchronized:* **2026-10-25** | *Backend Build Status:* **298/298 Tests Passing (100%)** | *Frontend Build Status:* **Clean (Vite 0 Errors)**
+
+---
+
+## 🧾 Phase 34 — Business Rules & Behavioral Contract
+
+**Memo-first shopping gate**
+- A customer must open a **named** memo for a store before any product can be added. Memos are no longer created implicitly on store entry.
+- `GET .../memo/?create=false` and `GET /cards/active/?create=false` return `data: null` instead of opening a memo, letting the UI render the "Create Your Memo" prompt.
+- `POST /stores/{id}/memo/` is idempotent per store: re-posting returns the **same** memo and applies any `title` / `shopping_mode` change rather than creating a duplicate.
+- Memos remain strictly store-scoped. `CardService.add_product_to_card` still rejects items from a different store, and a peek for store B never surfaces store A's memo.
+
+**Payment methods (UI-level stage)**
+- `PaymentMethod`: `cod`, `cash_counter`, `bkash`, `nagad`.
+- Mobile financial services (`bkash`, `nagad`) are accepted **only** for `fulfillment_type='delivery'`. Walk-in / pickup orders are settled in physical cash at the counter and are rejected with HTTP 400 if an online method is sent.
+- No gateway integration yet: every method is recorded with `payment_status='pending'` and settled through the existing handover / delivery collection flow. Transaction-ID capture and provider verification remain open.
+
+**Checkout contract fix**
+- The React checkout form previously posted `fulfillment_type: 'home_delivery'`, `customer_address_id`, and `delivery_instructions`, none of which the API reads. Home delivery orders were therefore saved with an invalid status value, a blank `delivery_address`, zero delivery fee, and skipped `delivery_enabled` / `min_order_amount` validation. The form now posts `fulfillment_type: 'delivery'`, `address_id`, and `notes`.
+
+**Store-scoped product listing**
+- `GET /products/?store_id=` previously ignored `store_id` and returned **every** store's active products, so a store page advertised items that `add-item` necessarily rejected with "All items in a shopping memo must belong to the same store." `ProductViewSet.get_queryset` now honours `store_id` and `category_id`; vendors still cannot widen scope past their own stores.
+
+**Other frontend defects fixed alongside**
+- `StoreDetailPage` passed the whole product object where `addToMemo` expects a product id, so `product_id` was posted as an object.
+- `StoreDetailPage` linked to `/memo`, which is not a route (`/active-memo` is) and fell through to the catch-all redirect.
+- `PublicStorefrontPage` destructured `setDrawerOpen` from `MemoContext`, which never provided it — calling it threw after a successful add. The page now owns its own `MemoDrawer`.
+- `ActiveMemoPage` read `activeMemo.subtotal` and `activeMemo.loyalty_discount`, neither of which `CardSerializer` emits, rendering "Items Subtotal $0.00" beside a non-zero total. Now uses `total_price` / `estimated_total` / `loyalty_discount_amount`.
+
+**Tests**: `cards/tests/test_named_memo_and_payment.py` (13 cases) covers the memo gate, cross-store isolation, cross-customer leakage, payment-method policy, and the exact payload the frontend sends. `products/tests/test_catalog_store_scope.py` (3 cases) covers store-scoped product listing.
+
+**Verified end to end** against the dev stack: a bKash home-delivery order (`delivery` / `bkash`, address snapshotted, $4.50 fee applied, `min_order_amount` enforced) and a counter-cash walk-in order at a *different* store (`walk_in` / `cash_counter`, 6-digit code issued, zero fee), each against its own separately named memo.
+
+---
+
+## 🔐 Phase 35 — Authentication Hardening, Dead-Code Removal & UX Cleanup
+
+**Session / login correctness**
+- `AuthContext` trusted `localStorage` blindly: a persisted token was treated as a live session with no server check, so an expired or revoked token left the app "signed in" while every request 401'd. The provider now validates the token against `GET /users/me/` on boot, clears the session on 401/403, and deliberately **keeps** the session on a network error so a connectivity blip does not sign users out.
+- `login()` never checked that the response contained a token. A malformed response stored the literal string `"undefined"`, leaving a permanently broken "logged in" state. It now throws instead.
+- `isAuthenticated` was `!!token`, which could be true while `user` was `null` (corrupt cached user) — route guards admitted the request but every role check was false. It now requires both a token and a resolved identity, and the role flags derive from it.
+- The 401 interceptor used `window.location.href`, hard-reloading the SPA and discarding the current page. It now dispatches a `smart-memo:unauthorized` event that `AuthContext` listens for, keeping React state and `localStorage` in step and letting the router handle the redirect.
+- `GET /users/me/` already existed; it is now documented as the SPA's session-validation probe. Covered by `users/tests/test_current_user.py` (valid token, anonymous, revoked token).
+
+**Removed (dead or unsafe surface)**
+- **Silent mock-data fallback** in `src/api/client.js`: when the backend was unreachable the client fabricated stores, products, categories, coupons, templates and fake reviews with invented customer names, and returned them as if real. Users could browse a fully fictional catalog and never know the backend was down. Removed along with `src/api/mockData.js` (221 lines).
+- **Hardcoded demo credentials**: the "Quick Fill Test Accounts" panel on the login page and the "Demo Role" switcher in the navbar both embedded real account emails and the shared password `Password123!` in shipped client code. Both removed, along with the now-unused handler and icon imports.
+- A duplicate `me` action accidentally added to `UserViewSet` (shadowed by the pre-existing one) was removed rather than left as dead code.
+
+**Fixed**
+- Error messages: the API wraps failures as `{ message: "Validation error", errors: ["Invalid email or password."] }`. The client read `message` first, so every login failure surfaced the useless envelope label. It now reads `errors` first (array and field-map forms), falling back to `message`, and gives specific copy for network/timeout failures.
+- Customer pages hand-rolled response unwrapping with differing fallback chains — the source of earlier `.map is not a function` crashes. `StoreDetailPage`, `OrderHistoryPage`, `PublicStorefrontPage`, `CheckoutPage` and `ActiveMemoPage` now use the shared `unwrapList` / `unwrapObject` helpers that the vendor pages already used.
+
+**UX**
+- Login: inline, persistent error alerts (a toast vanished before it could be read), password visibility toggle, `autoComplete` hints, labelled inputs, autofocus, and a "Signing in…" busy state.
+- `ProtectedRoute` records the intended path and login returns the user there instead of dumping them on the home page.
+- A role mismatch previously redirected to `/` with no explanation, which read as a broken link. It now renders an explicit "You don't have access to this page" card naming the required role, the signed-in account, and a link to that role's own dashboard.
+
+**Verified**: 317 backend tests pass; frontend builds clean. Browser-checked end to end — protected-route redirect, wrong-password inline error, login returning to the originally requested page, session revalidation on reload, customer-blocked-from-vendor-console, and a stale token being cleared with a redirect to login.

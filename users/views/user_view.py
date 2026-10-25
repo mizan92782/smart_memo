@@ -121,8 +121,14 @@ class UserViewSet(viewsets.GenericViewSet):
 
     @action(detail=False, methods=['get'], permission_classes=[IsAuthenticated])
     def me(self, request):
+        """
+        GET /users/me/ — authoritative identity for the bearer token.
+        The SPA calls this on boot to validate a persisted token and rehydrate
+        role/name rather than trusting its localStorage cache. 401 means the
+        token is expired or revoked and the client session should be cleared.
+        """
         return custome_success_response(
-            message="Profile retrieved.",
+            message="Current user retrieved.",
             data=UserSerializer(request.user).data,
             data_title="user"
         )
