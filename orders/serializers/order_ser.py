@@ -15,13 +15,14 @@ class SalesMemoSerializer(serializers.ModelSerializer):
     customer_email = serializers.EmailField(source='customer.email', read_only=True, default=None)
     vendor_email = serializers.EmailField(source='vendor.email', read_only=True, default=None)
     order_number = serializers.CharField(source='order.order_number', read_only=True, default=None)
+    store_name = serializers.CharField(source='store_name_snapshot', read_only=True)
     thermal_receipt = serializers.SerializerMethodField()
 
     class Meta:
         model = SalesMemo
         fields = [
             'id', 'memo_number', 'order', 'order_number', 'customer', 'customer_email', 'vendor', 'vendor_email',
-            'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
+            'store_name', 'store_name_snapshot', 'customer_email_snapshot', 'items_snapshot', 'subtotal',
             'coupon_code', 'discount_amount', 'loyalty_discount_amount', 'loyalty_points_earned', 'loyalty_stamps_earned',
             'delivery_fee', 'total_amount', 'amount_paid', 'walk_in_code_snapshot',
             'thermal_receipt', 'created_at'
