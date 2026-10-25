@@ -18,6 +18,7 @@ class NotificationType(models.TextChoices):
     PURCHASE_RECEIVED = 'purchase_received', 'Purchase Received'
     STOCK_TRANSFER_DISPATCHED = 'stock_transfer_dispatched', 'Stock Transfer Dispatched'
     STOCK_TRANSFER_RECEIVED = 'stock_transfer_received', 'Stock Transfer Received'
+    BATCH_EXPIRY_ALERT = 'batch_expiry_alert', 'Batch Expiry Alert'
     SYSTEM = 'system', 'System Notification'
 
 

@@ -258,7 +258,29 @@ This document is the living single source of truth for feature development statu
   - Automated point/stamp accrual upon order completion in `OrderService.fulfill_order` and in-store walk-in handover, snapshotting into `SalesMemo` and 40-col thermal receipt format.
   - Exposed vendor program management (`GET / PATCH /stores/{id}/loyalty-program/`, `GET /stores/{id}/loyalty-customers/`) and customer wallet (`GET /stores/{id}/loyalty/`, `GET /users/loyalty-cards/`).
   - Added automated test suite: `test_store_loyalty.py` (6/6 passing).
-- Executed full test suite across entire SaaS platform: **248 / 248 tests passing (100% pass rate)**.
+- Implemented **Phase 34: Customer Order Item Returns, Restocking & Thermal Credit Notes**:
+  - Implemented `OrderReturn` and `OrderReturnItem` models with `ReturnStatus` (`REQUESTED`, `APPROVED`, `REJECTED`, `PROCESSED`) and `ReturnReason` choices.
+  - Implemented `format_credit_note_thermal()` producing 40-column monospaced printable thermal slips.
+  - Added atomic return processing in `OrderReturnService`: restoring inventory with `StockMovementType.RETURN` (or `DAMAGE_LOSS` if defective), proportional reversal of loyalty points/stamps (`LoyaltyTransactionType.RETURN_REVERSAL`), payment status updating to `REFUNDED`, and store catalog cache invalidation.
+  - Exposed endpoints: `POST /orders/returns/request/`, `GET /orders/returns/`, `POST /orders/returns/{id}/process/`, and `GET /orders/returns/{id}/credit-note/?receipt_format=text`.
+  - Added automated test suite: `test_order_returns.py` (8/8 passing).
+- Implemented **Phase 35: Production CI/CD Pipeline & Database Backup/Restore Automation**:
+  - Configured `.github/workflows/ci.yml` running linting (Ruff), security scanning (Bandit), migration verification, and automated test execution against PostgreSQL 15 and Redis 7.
+  - Created automated database backup script `scripts/backup_db.sh` with gzip compression, SHA-256 checksums, and 30-day retention pruning.
+  - Created automated database restore script `scripts/restore_db.sh` with integrity verification and safety confirmation.
+- Implemented **Phase 36: Inter-Store Stock Transfers, Atomic Transit Ledger & Thermal Waybill Generation**:
+  - Implemented `StockTransfer` and `StockTransferItem` models with `TransferStatus` (`DRAFT`, `IN_TRANSIT`, `RECEIVED`, `CANCELLED`).
+  - Added movement types: `StockMovementType.TRANSFER_OUT`, `TRANSFER_IN`, and `TRANSFER_CANCEL_RESTORE`.
+  - Implemented `StockTransferService` with pessimistic row locking (`select_for_update`), atomic stock deduction at dispatch, auto-provisioning or matching of products at destination on receive, safe stock rollback on cancellation, and driver thermal waybill generation (`format_waybill_thermal()`).
+  - Exposed endpoints: `POST /inventory/transfers/create-transfer/`, `POST /inventory/transfers/{id}/dispatch/`, `POST /inventory/transfers/{id}/receive/`, `POST /inventory/transfers/{id}/cancel/`, and `GET /inventory/transfers/{id}/waybill/?receipt_format=text`.
+  - Added automated test suite: `test_stock_transfers.py` (8/8 passing).
+- Implemented **Phase 37: Perishable Batch & Expiry Date Tracking (FEFO), Spoilage Write-Off & Clearance Pricing**:
+  - Implemented `ProductBatch` model with `store`, `product`, `batch_number`, `manufacture_date`, `expiry_date`, `initial_quantity`, `current_quantity`, `cost_price`, `status` (`ACTIVE`, `NEAR_EXPIRY`, `EXPIRED`, `DEPLETED`, `DISPOSED`), `is_clearance`, and `clearance_discount_percent`.
+  - Added `StockMovementType.BATCH_DISPOSAL`, `NotificationType.BATCH_EXPIRY_ALERT`, and audit actions `BATCH_CREATED`, `BATCH_DISPOSED`, `BATCH_CLEARANCE`.
+  - Implemented `BatchRepository` and `BatchService` for First-Expired, First-Out (FEFO) stock allocation, batch intake, atomic spoilage write-offs protecting active order reservations, dynamic clearance pricing, and near-expiry automated vendor alerting.
+  - Exposed endpoints: `GET / POST /inventory/batches/`, `GET /inventory/batches/{id}/`, `POST /inventory/batches/{id}/dispose/`, `POST /inventory/batches/{id}/clearance/`, `GET /inventory/batches/near-expiry/`, and `POST /inventory/batches/fefo-allocate/`.
+  - Added automated test suite: `test_product_batches.py` (10/10 passing).
+- Executed full test suite across entire SaaS platform: **274 / 274 tests passing (100% pass rate)**.
 
 ---
 

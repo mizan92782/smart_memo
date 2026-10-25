@@ -18,6 +18,7 @@ class StockMovementType(models.TextChoices):
     TRANSFER_OUT = 'transfer_out', 'Stock Transfer Out'
     TRANSFER_IN = 'transfer_in', 'Stock Transfer In'
     TRANSFER_CANCEL_RESTORE = 'transfer_cancel_restore', 'Transfer Cancel Restore'
+    BATCH_DISPOSAL = 'batch_disposal', 'Batch Spoilage / Expiry Disposal'
 
 
 
