@@ -71,3 +71,13 @@ class ProductSerializer(serializers.ModelSerializer):
 
     def get_in_stock(self, obj) -> bool:
         return obj.is_in_stock()
+
+    def validate(self, attrs):
+        category = attrs.get('category')
+        store = attrs.get('store') or getattr(self.instance, 'store', None)
+        if category and category.store and store:
+            if category.store_id != store.id:
+                raise serializers.ValidationError({
+                    "category": f"Category '{category.name}' does not belong to store '{store.name}'."
+                })
+        return attrs

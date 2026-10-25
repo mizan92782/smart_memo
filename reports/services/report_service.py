@@ -214,3 +214,167 @@ class ReportService:
 
         results.sort(key=lambda x: (x['units_sold'], Decimal(x['gross_revenue'])), reverse=True)
         return results[:limit]
+
+    @staticmethod
+    def get_category_sales_report(
+        store: Store,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None
+    ) -> Dict[str, Any]:
+        """
+        Aggregate sales performance by product category for a store.
+        Returns category breakdown, units sold, gross sales revenue,
+        order count, and percentage contribution to overall store sales.
+        """
+        from orders.models.order_mod import OrderItem, OrderStatus
+        from categories.models.category_mod import Category
+
+        items_qs = OrderItem.objects.filter(
+            order__store=store,
+            order__status=OrderStatus.COMPLETED,
+            order__is_deleted=False
+        )
+        if start_date:
+            items_qs = items_qs.filter(order__created_at__date__gte=start_date)
+        if end_date:
+            items_qs = items_qs.filter(order__created_at__date__lte=end_date)
+
+        cat_aggregates = (
+            items_qs
+            .values('product__category_id', 'product__category__name')
+            .annotate(
+                units_sold=Coalesce(Sum('quantity'), Decimal('0.000')),
+                gross_sales=Coalesce(Sum('line_total'), Decimal('0.00')),
+                order_count=Count('order_id', distinct=True),
+                product_count=Count('product_id', distinct=True)
+            )
+        )
+
+        sales_map = {}
+        total_gross = Decimal('0.00')
+        total_units = Decimal('0.000')
+
+        for row in cat_aggregates:
+            cid = row['product__category_id']
+            cname = row['product__category__name'] or 'General'
+            u_sold = row['units_sold']
+            g_sales = row['gross_sales']
+            sales_map[cid] = {
+                'category_id': cid,
+                'category_name': cname,
+                'units_sold': float(u_sold),
+                'gross_sales': g_sales,
+                'order_count': row['order_count'],
+                'product_count': row['product_count'],
+            }
+            total_gross += g_sales
+            total_units += u_sold
+
+        # Ensure all existing categories of this store are represented (even with 0 sales)
+        all_categories = Category.objects.filter(store=store, is_deleted=False)
+        for cat in all_categories:
+            if cat.id not in sales_map:
+                prod_count = cat.products.filter(is_deleted=False).count()
+                sales_map[cat.id] = {
+                    'category_id': cat.id,
+                    'category_name': cat.name,
+                    'units_sold': 0.0,
+                    'gross_sales': Decimal('0.00'),
+                    'order_count': 0,
+                    'product_count': prod_count,
+                }
+
+        results = list(sales_map.values())
+        # Sort by gross_sales descending, then units_sold descending
+        results.sort(key=lambda x: (x['gross_sales'], x['units_sold']), reverse=True)
+
+        # Compute percentages
+        for item in results:
+            if total_gross > Decimal('0.00'):
+                pct = round((item['gross_sales'] / total_gross) * 100, 1)
+            else:
+                pct = 0.0
+            item['percentage'] = float(pct)
+            item['gross_sales'] = str(item['gross_sales'])
+
+        return {
+            "store_id": store.id,
+            "store_name": store.name,
+            "period": {
+                "start_date": str(start_date) if start_date else None,
+                "end_date": str(end_date) if end_date else None,
+            },
+            "total_gross_sales": str(total_gross),
+            "total_units_sold": float(total_units),
+            "categories": results
+        }
+
+    @staticmethod
+    def get_sales_trends(
+        store: Store,
+        days: int = 14
+    ) -> Dict[str, Any]:
+        """
+        Aggregate daily sales trends (revenue, order counts, units)
+        over the specified number of days for charting and visualization.
+        """
+        from datetime import timedelta
+        from django.utils import timezone
+        from orders.models.order_mod import Order, OrderStatus, OrderItem
+
+        today = timezone.now().date()
+        start_date = today - timedelta(days=days - 1)
+
+        orders = (
+            Order.objects
+            .filter(
+                store=store,
+                status=OrderStatus.COMPLETED,
+                is_deleted=False,
+                created_at__date__gte=start_date,
+                created_at__date__lte=today
+            )
+            .values('created_at__date')
+            .annotate(
+                gross_sales=Coalesce(Sum('total_amount'), Decimal('0.00')),
+                order_count=Count('id')
+            )
+        )
+        orders_by_date = {row['created_at__date']: row for row in orders}
+
+        # Daily units sold
+        items = (
+            OrderItem.objects
+            .filter(
+                order__store=store,
+                order__status=OrderStatus.COMPLETED,
+                order__is_deleted=False,
+                order__created_at__date__gte=start_date,
+                order__created_at__date__lte=today
+            )
+            .values('order__created_at__date')
+            .annotate(units_sold=Coalesce(Sum('quantity'), Decimal('0.000')))
+        )
+        items_by_date = {row['order__created_at__date']: row['units_sold'] for row in items}
+
+        trend_data = []
+        for i in range(days):
+            current_day = start_date + timedelta(days=i)
+            ord_row = orders_by_date.get(current_day, {})
+            u_sold = items_by_date.get(current_day, Decimal('0.000'))
+            trend_data.append({
+                "date": current_day.isoformat(),
+                "label": current_day.strftime("%b %d"),
+                "gross_sales": str(ord_row.get('gross_sales', Decimal('0.00'))),
+                "order_count": ord_row.get('order_count', 0),
+                "units_sold": float(u_sold),
+            })
+
+        return {
+            "store_id": store.id,
+            "days": days,
+            "start_date": start_date.isoformat(),
+            "end_date": today.isoformat(),
+            "trends": trend_data
+        }
+

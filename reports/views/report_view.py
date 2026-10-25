@@ -42,6 +42,8 @@ class ReportViewSet(viewsets.ViewSet):
         sales_data = ReportService.get_sales_report(store=store)
         inv_data = ReportService.get_inventory_report(store=store)
         hot_products = ReportService.get_hot_products(store=store)
+        category_sales = ReportService.get_category_sales_report(store=store)
+        sales_trends = ReportService.get_sales_trends(store=store, days=14)
 
         financials = sales_data.get('financials', {})
         orders_info = sales_data.get('orders', {})
@@ -60,7 +62,38 @@ class ReportViewSet(viewsets.ViewSet):
             "total_tracked_products": inv_data.get('total_tracked_products', 0),
             "low_stock_items": inv_data.get('low_stock_items', []),
             "hot_products": hot_products,
+            "category_sales": category_sales,
+            "sales_trends": sales_trends,
         }
+        return custome_success_response(data=data)
+
+    @action(detail=False, methods=['get'], url_path='category-sales')
+    def category_sales(self, request):
+        """Category-wise sales performance and distribution report."""
+        store_id = request.query_params.get('store_id')
+        if not store_id:
+            return custome_error_response("store_id query param is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        store, err = self._get_authorized_store(request, int(store_id))
+        if err:
+            return err
+
+        data = ReportService.get_category_sales_report(store=store)
+        return custome_success_response(data=data)
+
+    @action(detail=False, methods=['get'], url_path='sales-trends')
+    def sales_trends(self, request):
+        """Time-series sales trends for charting and visualization."""
+        store_id = request.query_params.get('store_id')
+        if not store_id:
+            return custome_error_response("store_id query param is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        days = int(request.query_params.get('days', 14))
+        store, err = self._get_authorized_store(request, int(store_id))
+        if err:
+            return err
+
+        data = ReportService.get_sales_trends(store=store, days=days)
         return custome_success_response(data=data)
 
     @action(detail=False, methods=['get'])

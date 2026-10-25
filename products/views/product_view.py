@@ -71,6 +71,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         if store.vendor != request.user and not request.user.is_superuser:
             return custome_error_response("You do not own this store.", status_code=status.HTTP_403_FORBIDDEN)
 
+        category_id = request.data.get('category') or request.data.get('category_id')
+        if category_id:
+            category = Category.objects.filter(pk=category_id, is_deleted=False).first()
+            if not category:
+                return custome_error_response("Category not found.", status_code=status.HTTP_404_NOT_FOUND)
+            if category.store and category.store_id != store.id:
+                return custome_error_response("The selected category does not belong to this store.", status_code=status.HTTP_400_BAD_REQUEST)
+
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         product = serializer.save(store=store)
@@ -87,6 +95,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         product = self.get_object()
         if product.store and product.store.vendor != request.user and not request.user.is_superuser:
             return custome_error_response("You do not own this store.", status_code=status.HTTP_403_FORBIDDEN)
+
+        category_id = request.data.get('category') or request.data.get('category_id')
+        if category_id:
+            category = Category.objects.filter(pk=category_id, is_deleted=False).first()
+            if not category:
+                return custome_error_response("Category not found.", status_code=status.HTTP_404_NOT_FOUND)
+            if category.store and product.store and category.store_id != product.store.id:
+                return custome_error_response("The selected category does not belong to this store.", status_code=status.HTTP_400_BAD_REQUEST)
 
         serializer = self.get_serializer(product, data=request.data, partial=kwargs.get('partial', False))
         serializer.is_valid(raise_exception=True)

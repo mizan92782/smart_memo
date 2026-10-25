@@ -51,3 +51,16 @@ class CategoryTenantSecurityTests(TestCase):
             'store_id': self.store_a.id
         })
         self.assertEqual(response.status_code, 403)
+
+    def test_vendor_cannot_assign_another_store_category_to_product(self):
+        """Vendor A cannot assign Vendor B's category to a product in Store A."""
+        self.client.force_authenticate(user=self.vendor_a)
+        response = self.client.post('/products/', {
+            'store': self.store_a.id,
+            'name': 'Cross Tenant Product',
+            'price': '10.00',
+            'stock': 10,
+            'category': self.cat_b.id,
+        })
+        self.assertEqual(response.status_code, 400)
+

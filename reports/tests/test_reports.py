@@ -116,3 +116,44 @@ class ReportsTestCase(TestCase):
         self.assertEqual(data["purchases"]["total"], 1)
         self.assertEqual(data["purchases"]["received"], 1)
         self.assertEqual(data["financials"]["total_procurement_cost"], "550.00")
+
+    def test_category_sales_report(self):
+        """Category sales report aggregates units, gross sales, and percentages."""
+        from categories.models.category_mod import Category
+        from orders.models.order_mod import OrderItem
+
+        cat_produce = Category.objects.create(store=self.store, name="Produce")
+        self.prod_apple.category = cat_produce
+        self.prod_apple.save()
+
+        completed_order = Order.objects.filter(store=self.store, status=OrderStatus.COMPLETED).first()
+        OrderItem.objects.create(
+            order=completed_order,
+            product=self.prod_apple,
+            product_name_snapshot=self.prod_apple.name,
+            unit_price_snapshot=Decimal("120.00"),
+            quantity=Decimal("2.000"),
+            line_total=Decimal("240.00")
+        )
+
+        res = self.client.get(f"/reports/category-sales/?store_id={self.store.id}")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.data["data"]
+
+        self.assertEqual(data["total_gross_sales"], "240.00")
+        self.assertEqual(data["total_units_sold"], 2.0)
+        self.assertEqual(len(data["categories"]), 1)
+        cat_data = data["categories"][0]
+        self.assertEqual(cat_data["category_name"], "Produce")
+        self.assertEqual(cat_data["gross_sales"], "240.00")
+        self.assertEqual(cat_data["units_sold"], 2.0)
+        self.assertEqual(cat_data["percentage"], 100.0)
+
+    def test_sales_trends_report(self):
+        """Sales trends report returns chronological trend points."""
+        res = self.client.get(f"/reports/sales-trends/?store_id={self.store.id}&days=7")
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        data = res.data["data"]
+        self.assertEqual(data["days"], 7)
+        self.assertEqual(len(data["trends"]), 7)
+
