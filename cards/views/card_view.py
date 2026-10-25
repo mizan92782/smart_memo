@@ -9,6 +9,8 @@ from cards.models.card_mod import Card
 from cards.serializers.card_ser import CardSerializer
 from cards.services.card_service import CardService
 from cards.repositories.card_repository import CardRepository
+from cards.serializers.template_ser import SaveAsTemplateSerializer, StoreMemoTemplateSerializer
+from cards.services.template_service import TemplateService
 from shared.responses.responses import custome_success_response, custome_error_response
 
 
@@ -559,6 +561,32 @@ class CardViewSet(viewsets.ModelViewSet):
             )
         except (ValueError, PermissionError) as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=True, methods=['post'], url_path='save-as-template')
+    def save_as_template(self, request, pk=None):
+        """Save this draft shopping memo as a recurring routine template for the store."""
+        card = self.get_object()
+        ser = SaveAsTemplateSerializer(data=request.data)
+        if not ser.is_valid():
+            return custome_error_response("Invalid input", errors=ser.errors, status_code=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from django.core.exceptions import ValidationError as DjangoValidationError, PermissionDenied
+            template = TemplateService.save_memo_as_template(
+                card=card,
+                user=request.user,
+                name=ser.validated_data['name'],
+                description=ser.validated_data.get('description', ''),
+                is_favorite=ser.validated_data.get('is_favorite', False)
+            )
+            return custome_success_response(
+                message=f"Shopping memo saved as routine template '{template.name}'.",
+                data=StoreMemoTemplateSerializer(template).data,
+                status_code=status.HTTP_201_CREATED
+            )
+        except (DjangoValidationError, PermissionDenied, ValueError) as exc:
+            msg = exc.messages[0] if hasattr(exc, 'messages') else str(exc)
+            return custome_error_response(msg, status_code=status.HTTP_400_BAD_REQUEST)
 
 
 

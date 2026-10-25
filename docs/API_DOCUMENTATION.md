@@ -2017,5 +2017,167 @@ Points Adjusted:                 -4 pts
 ========================================
 ```
 
+---
+
+## 20. Store Routine Basket Templates & One-Tap Memo Hydration
+
+### `POST /cards/{id}/save-as-template/`
+- **Description**: Save an existing draft shopping memo with all its line items into a named recurring routine template for that specific store (e.g. "Weekly Groceries", "Monthly Household Refill"). Automatically populates relational `user`, `store`, and `vendor` foreign keys.
+- **Permissions**: `IsAuthenticated` (Customer owner only).
+- **Request Body**:
+```json
+{
+  "name": "Weekly Breakfast Routine",
+  "description": "Organic whole milk and eggs for every Monday",
+  "is_favorite": true
+}
+```
+- **Response** (`201 Created`):
+```json
+{
+  "success": true,
+  "message": "Shopping memo saved as routine template 'Weekly Breakfast Routine'.",
+  "data": {
+    "id": 1,
+    "name": "Weekly Breakfast Routine",
+    "description": "Organic whole milk and eggs for every Monday",
+    "user": 5,
+    "store": 12,
+    "store_name": "Fresh Fields Market",
+    "vendor": 2,
+    "vendor_email": "vendor@example.com",
+    "shopping_mode": "remote",
+    "is_favorite": true,
+    "items": [
+      {
+        "id": 1,
+        "product_id": 101,
+        "product_name": "Organic Whole Milk 1L",
+        "barcode": "8901234567890",
+        "sku": "MILK-001",
+        "aisle": "Dairy",
+        "shelf_location": "D-02",
+        "quantity": "2.000",
+        "unit_price": "4.50",
+        "subtotal": "9.00",
+        "notes": "",
+        "is_in_stock": true,
+        "available_stock": "48.000",
+        "created_at": "2026-10-25T08:18:05Z",
+        "updated_at": "2026-10-25T08:18:05Z"
+      }
+    ],
+    "total_items_count": 1,
+    "estimated_total": "9.00",
+    "created_at": "2026-10-25T08:18:05Z",
+    "updated_at": "2026-10-25T08:18:05Z"
+  },
+  "errors": null
+}
+```
+
+### `GET /cards/templates/`
+- **Description**: List saved routine basket templates. Customers see their own templates; vendors can inspect customer routine lists created for their store using `?as_vendor=true`.
+- **Permissions**: `IsAuthenticated`.
+- **Query Parameters**:
+  - `store_id`: optional integer filter for templates belonging to a specific store.
+  - `is_favorite`: `true` or `false` to filter pinned/favorite routines.
+  - `as_vendor`: `true` (Vendors only) to view customer templates scoped to their store(s).
+
+### `POST /cards/templates/`
+- **Description**: Create a routine basket template directly from scratch for a store.
+- **Permissions**: `IsAuthenticated`.
+- **Request Body**:
+```json
+{
+  "store_id": 12,
+  "name": "Monthly Pantry Essentials",
+  "description": "Rice, oil, spices, and lentils",
+  "shopping_mode": "walk_in",
+  "is_favorite": true
+}
+```
+
+### `GET /cards/templates/{id}/`
+- **Description**: Retrieve a routine template with line items, dynamic catalog pricing recalculation, and stock availability check.
+- **Permissions**: `IsAuthenticated` (Owner, Store Vendor, or Staff).
+
+### `PATCH /cards/templates/{id}/`
+- **Description**: Update template metadata (`name`, `description`, `shopping_mode`, `is_favorite`).
+- **Permissions**: `IsAuthenticated` (Owner only).
+
+### `DELETE /cards/templates/{id}/`
+- **Description**: Soft delete routine template (`is_deleted=true`).
+- **Permissions**: `IsAuthenticated` (Owner only).
+
+### `POST /cards/templates/{id}/add-item/` (or `POST /cards/templates/{id}/items/`)
+- **Description**: Add or update a product line item in the template. Rejects products from different stores.
+- **Permissions**: `IsAuthenticated` (Owner only).
+- **Request Body**:
+```json
+{
+  "product_id": 105,
+  "quantity": "3.000",
+  "notes": "Prefer latest expiration batch"
+}
+```
+
+### `DELETE /cards/templates/{id}/items/{item_id}/` (or `POST /cards/templates/{id}/remove-item/`)
+- **Description**: Remove a line item from the routine template.
+- **Permissions**: `IsAuthenticated` (Owner only).
+
+### `POST /cards/templates/{id}/load-to-memo/`
+- **Description**: **One-Tap Memo Hydration**. Loads the template's line items into the customer's active draft shopping memo for that store. Automatically evaluates real-time stock availability and live catalog prices. If any item is out of stock or inactive, it is gracefully omitted with descriptive feedback in `omitted_items` without aborting the hydration of available items.
+- **Permissions**: `IsAuthenticated` (Owner only).
+- **Request Body**:
+```json
+{
+  "mode": "replace",
+  "shopping_mode": "walk_in"
+}
+```
+*`mode` options:*
+- `"replace"` *(default)*: Replaces all line items in the active draft memo with items from this template.
+- `"merge"`: Merges template items into the active memo, incrementing quantities for existing items up to available stock.
+- **Response** (`200 OK`):
+```json
+{
+  "success": true,
+  "message": "Routine template loaded into active memo (2 loaded, 1 omitted).",
+  "data": {
+    "card": {
+      "id": 15,
+      "store": 12,
+      "store_name": "Fresh Fields Market",
+      "shopping_mode": "walk_in",
+      "total_amount": "14.50",
+      "items": [...]
+    },
+    "loaded_items_count": 2,
+    "omitted_items_count": 1,
+    "loaded_items": [
+      {
+        "item_id": 42,
+        "product_id": 101,
+        "product_name": "Organic Whole Milk 1L",
+        "quantity": "2.000",
+        "unit_price": "4.50",
+        "subtotal": "9.00",
+        "aisle": "Dairy",
+        "shelf_location": "D-02"
+      }
+    ],
+    "omitted_items": [
+      {
+        "product_id": 109,
+        "product_name": "Sourdough Bread",
+        "reason": "Product currently out of stock"
+      }
+    ]
+  },
+  "errors": null
+}
+```
+
 
 

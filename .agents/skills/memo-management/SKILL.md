@@ -76,5 +76,11 @@ A draft memo is an editable shopping list. A submitted order is a customer's req
   - Matches products across catalogs; re-prices items at target store prices; updates `card.store` and `card.vendor`.
   - Disconnects store-specific promotional coupons (`card.coupon = None`) to prevent cross-tenant coupon leakages.
   - Supports `omit_missing=True` (drops unmatched products from target memo) or `omit_missing=False` (aborts if any product is unfulfillable at target store).
-  - Supports `clone=True` (creates a new transferred memo leaving original untouched) or in-place transfer (`clone=False`).
+  - **Store Routine Basket Templates & One-Tap Memo Hydration**:
+  - `StoreMemoTemplate` & `StoreMemoTemplateItem` models: store-scoped recurring routine baskets (e.g. "Weekly Groceries", "Monthly Household Refill") with explicit relational `user`, `store`, and `vendor` foreign keys.
+  - `POST /cards/{id}/save-as-template/`: saves an active shopping memo with all its line items directly into a recurring routine template for that specific store.
+  - `GET /cards/templates/`: list customer routine templates; supports store filtering (`store_id`), favorites (`is_favorite`), and vendor oversight (`as_vendor=true`).
+  - `POST /cards/templates/`: create routine basket template from scratch for a store.
+  - `POST /cards/templates/{id}/add-item/` & `DELETE /cards/templates/{id}/items/{item_id}/`: manage template items with strict store boundary validation.
+  - `POST /cards/templates/{id}/load-to-memo/`: **One-Tap Memo Hydration**. Populates the customer's active draft memo for that store. Automatically evaluates real-time stock availability and live catalog prices. If any item is out of stock or inactive, it is gracefully omitted with descriptive feedback in `omitted_items` without breaking the hydration of available items. Supports `replace` and `merge` strategies.
 

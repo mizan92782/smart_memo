@@ -79,8 +79,9 @@ This document is the living single source of truth for feature development statu
 | **33** | **Store Loyalty Points & Visit Stamp Cards** | Store-scoped loyalty programs (`StoreLoyaltyProgram`, `POINTS` vs `STAMPS`), customer punch cards (`CustomerStoreLoyalty`), append-only ledger (`LoyaltyTransaction`), draft memo point/stamp redemption (`POST /cards/{id}/redeem-loyalty/`), checkout deduction & cancellation refund, order completion automated point/stamp award & thermal receipt snapshot | 🟢 Completed | 🟢 6 Passing | 🟢 6 Passing | 🟢 Enforced |
 | **34** | **Customer Order Returns & Credit Notes** | Item returns on completed orders (`OrderReturn`, `OrderReturnItem`), customer submission (`POST /orders/returns/request/`), vendor review/approval (`POST /orders/returns/{id}/process/`), atomic inventory restock ledger, damage write-off, proportional discount/loyalty reversal, printable 40-col monospace credit note slip (`GET /orders/returns/{id}/credit-note/?receipt_format=text`) | 🟢 Completed | 🟢 8 Passing | 🟢 8 Passing | 🟢 Enforced |
 | **35** | **Production CI/CD & Database DevOps** | GitHub Actions pipeline (`.github/workflows/ci.yml`) running lint, security, migration checks, and full automated test suite with Postgres/Redis services; production DB backup script with SHA256 checksums (`scripts/backup_db.sh`) and restore script (`scripts/restore_db.sh`) | 🟢 Completed | 🟢 Verified | 🟢 Verified | 🟢 Enforced |
+| **36** | **Store Routine Basket Templates & One-Tap Hydration** | Recurring store routine baskets (`StoreMemoTemplate`, `StoreMemoTemplateItem`) with database-level `user`, `store`, and `vendor` FKs. Memo saving (`POST /cards/{id}/save-as-template/`), direct CRUD (`/cards/templates/`), dynamic real-time catalog pricing & stock verification, and one-tap memo hydration (`POST /cards/templates/{id}/load-to-memo/`) with `replace` or `merge` modes and graceful stock omission | 🟢 Completed | 🟢 9 Passing | 🟢 9 Passing | 🟢 Enforced |
 
-*Total Active Automated Tests Passing: 256 / 256 (100% Passing)*
+*Total Active Automated Tests Passing: 292 / 292 (100% Passing)*
 
 
 ---
@@ -122,6 +123,7 @@ This document is the living single source of truth for feature development statu
 | **Orders** | `orders/tests/test_quick_reorder.py` | 1-tap quick reorder past order items into active shopping memo, catalog revalidation | 🟢 Passing | 1 / 1 OK |
 | **Cards** | `cards/tests/test_aisle_picking.py` | In-store basket picking, progress indicators, batch pick, aisle walking route sequence | 🟢 Passing | 6 / 6 OK |
 | **Cards** | `cards/tests/test_store_comparison_and_budget.py` | Cross-store comparison, price differences, memo store transfer, budget limits & over-budget alerts | 🟢 Passing | 5 / 5 OK |
+| **Cards** | `cards/tests/test_memo_templates.py` | Routine templates CRUD, save memo as template, replace/merge hydration, stock verification & omission, IDOR | 🟢 Passing | 9 / 9 OK |
 | **Orders** | `orders/tests/test_state_machine.py` | Order submission, acceptance, fulfillment, cancellation, Sales Memo | 🟢 Passing | 4 / 4 OK |
 | **Orders** | `orders/tests/test_idempotency.py` | Idempotency deduplication, cross-customer order isolation, cross-vendor isolation | 🟢 Passing | 3 / 3 OK |
 | **Orders** | `orders/tests/test_performance.py` | N+1 query prevention on orders listing and catalog search (`assertNumQueries`) | 🟢 Passing | 2 / 2 OK |
