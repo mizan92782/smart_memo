@@ -6,6 +6,7 @@ from purchases.serializers.purchase_ser import (
     SupplierSerializer,
     PurchaseSerializer,
     PurchaseCreateSerializer,
+    GenerateLowStockPOSerializer,
 )
 from purchases.services.purchase_service import PurchaseService
 from stores.models.store_mod import Store
@@ -184,6 +185,51 @@ class PurchaseViewSet(viewsets.ModelViewSet):
             return custome_success_response(
                 message="Purchase order cancelled.",
                 data=PurchaseSerializer(purchase).data
+            )
+        except ValueError as exc:
+            return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)
+
+    @action(detail=False, methods=['post'], url_path='generate-low-stock-pos')
+    def generate_low_stock_pos(self, request):
+        """
+        Evaluate store low stock balances and automatically generate draft purchase orders.
+        """
+        serializer = GenerateLowStockPOSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        store_id = data['store_id']
+        store = Store.objects.filter(pk=store_id).first()
+        if not store:
+            return custome_error_response("Store not found.", status_code=status.HTTP_404_NOT_FOUND)
+
+        if store.vendor != request.user and not request.user.is_superuser:
+            return custome_error_response(
+                "You do not own this store.",
+                status_code=status.HTTP_403_FORBIDDEN
+            )
+
+        default_supplier = None
+        default_supplier_id = data.get('default_supplier_id')
+        if default_supplier_id:
+            default_supplier = Supplier.objects.filter(pk=default_supplier_id, store=store, is_deleted=False).first()
+            if not default_supplier:
+                return custome_error_response(
+                    "Default supplier not found for this store.",
+                    status_code=status.HTTP_400_BAD_REQUEST
+                )
+
+        try:
+            report = PurchaseService.generate_low_stock_purchase_orders(
+                store=store,
+                default_supplier=default_supplier,
+                include_open_order_guard=data.get('include_open_order_guard', True),
+                actor=request.user
+            )
+            return custome_success_response(
+                message=f"Generated {report['created_orders_count']} automated draft purchase order(s).",
+                data=report,
+                status_code=status.HTTP_201_CREATED if report['created_orders_count'] > 0 else status.HTTP_200_OK
             )
         except ValueError as exc:
             return custome_error_response(str(exc), status_code=status.HTTP_400_BAD_REQUEST)

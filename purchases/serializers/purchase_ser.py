@@ -61,3 +61,10 @@ class PurchaseCreateSerializer(serializers.Serializer):
     )
     notes = serializers.CharField(required=False, allow_blank=True, default="")
     items = PurchaseItemCreateSerializer(many=True, allow_empty=False)
+
+
+class GenerateLowStockPOSerializer(serializers.Serializer):
+    """Input serializer for automated low-stock purchase order generation."""
+    store_id = serializers.IntegerField(required=True)
+    default_supplier_id = serializers.IntegerField(required=False, allow_null=True)
+    include_open_order_guard = serializers.BooleanField(required=False, default=True)

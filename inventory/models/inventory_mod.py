@@ -40,6 +40,8 @@ class StockBalance(BaseModel):
     on_hand = models.DecimalField(max_digits=10, decimal_places=3, default=Decimal('0.000'))
     reserved = models.DecimalField(max_digits=10, decimal_places=3, default=Decimal('0.000'))
     low_stock_threshold = models.DecimalField(max_digits=10, decimal_places=3, default=Decimal('5.000'))
+    reorder_quantity = models.DecimalField(max_digits=10, decimal_places=3, default=Decimal('20.000'))
+    target_stock_level = models.DecimalField(max_digits=10, decimal_places=3, default=Decimal('30.000'))
 
     class Meta:
         ordering = ['product__name']

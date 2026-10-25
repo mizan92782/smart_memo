@@ -56,6 +56,15 @@ class Product(BaseModel):
         choices=CurrencyUnit.choices,
         default=CurrencyUnit.BDT
     )
+    cost_price = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    primary_supplier = models.ForeignKey(
+        'purchases.Supplier',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='supplied_products'
+    )
+    reorder_quantity = models.DecimalField(max_digits=10, decimal_places=3, default=Decimal('20.000'))
     stock = models.DecimalField(max_digits=10, decimal_places=2, default=5)
     is_active = models.BooleanField(default=True)
 

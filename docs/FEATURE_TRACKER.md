@@ -280,7 +280,13 @@ This document is the living single source of truth for feature development statu
   - Implemented `BatchRepository` and `BatchService` for First-Expired, First-Out (FEFO) stock allocation, batch intake, atomic spoilage write-offs protecting active order reservations, dynamic clearance pricing, and near-expiry automated vendor alerting.
   - Exposed endpoints: `GET / POST /inventory/batches/`, `GET /inventory/batches/{id}/`, `POST /inventory/batches/{id}/dispose/`, `POST /inventory/batches/{id}/clearance/`, `GET /inventory/batches/near-expiry/`, and `POST /inventory/batches/fefo-allocate/`.
   - Added automated test suite: `test_product_batches.py` (10/10 passing).
-- Executed full test suite across entire SaaS platform: **274 / 274 tests passing (100% pass rate)**.
+- Implemented **Phase 38: Automated Low-Stock Purchase Order Generation & Open-Order Deduplication**:
+  - Added procurement metadata to `Product` (`cost_price`, `primary_supplier`, `reorder_quantity`) and `StockBalance` (`reorder_quantity`, `target_stock_level`).
+  - Added `AuditAction.PURCHASE_ORDER_AUTO_GENERATED` and `NotificationType.PURCHASE_ORDER_GENERATED`.
+  - Implemented `PurchaseService.generate_low_stock_purchase_orders()`: scans store inventory for low-stock products, automatically resolves suppliers (primary supplier, most recent historical supplier, or fallback default supplier), calculates optimal replenishment quantities, groups items by supplier into draft POs, avoids duplicate ordering via `include_open_order_guard`, writes audit log entries, and dispatches in-app vendor notifications.
+  - Exposed endpoint: `POST /purchases/orders/generate-low-stock-pos/` with `GenerateLowStockPOSerializer`.
+  - Added automated test suite: `test_low_stock_po_generation.py` (4/4 passing).
+- Executed full test suite across entire SaaS platform: **278 / 278 tests passing (100% pass rate)**.
 
 ---
 
