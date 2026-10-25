@@ -1,7 +1,12 @@
 # Smart Memo System — Agent Instructions
 
 ## Mission
-Build and maintain Smart Memo System, a multi-tenant SaaS connecting local stores/vendors and customers. Vendors manage stores, categories, products, pricing, inventory, suppliers, purchases, offers, sales and orders. Customers discover nearby stores, search products, create memos, favorite stores, order pickup/home delivery, and pay cash on delivery where supported.
+Build and maintain Smart Memo System, a multi-tenant SaaS connecting local stores/vendors and customers as a commercial platform:
+1. **Turnkey Merchant Web Store**: Every vendor/store automatically receives an instant, ready-to-use e-commerce website (e.g. `/Eshopping/{public_url_slug}/` or vanity domain) with custom branding, logo, cover banner, multi-image product catalog, WhatsApp/phone lines, and operating hours — enabling new business owners to launch an online store immediately without custom website development.
+2. **Dual-Channel Digital Memo Shopping System**:
+   - **In-Store Walk-In Shopping**: Customers visit the physical store, scan shelf barcodes with their smartphone, track their budget in real-time, pick items along aisle walking sequences, and generate a 6-digit Walk-In Code for instant counter POS handover without waiting in checkout queues.
+   - **From-Home Online Shopping**: Customers browse the store website from home, add items to their memo, select saved addresses, calculate distance delivery fees, and order with Cash on Delivery (COD).
+3. **Merchant Operational Hub**: Vendors manage categories, multi-photo products, inventory ledgers, suppliers, purchase receiving, 40-col shelf tag printing, printable in-store QR posters, loyalty stamp cards, and counter POS fulfillment.
 
 ## Before every task
 1. Inspect the repository, current conventions, dependencies, tests, and existing implementation.

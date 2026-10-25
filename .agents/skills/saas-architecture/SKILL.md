@@ -43,3 +43,12 @@ Starting the project, changing module boundaries, introducing shared services, o
 - Cross-module workflows have explicit consistency rules.
 - No needless microservices or duplicated business logic.
 - Architecture decisions and trade-offs are documented.
+
+## Commercial Architecture & Turnkey Storefronts
+- **Turnkey Storefront Websites for Merchants**:
+  - Each vendor store functions as an immediate standalone e-commerce website at `/Eshopping/{public_url_slug}/` with custom cover banners, logos, contact channels, and multi-photo product catalogs.
+  - New business owners can sell instantly without commissioning external web development.
+- **Dual-Channel Digital Shopping Memo**:
+  - **Physical In-Shop Walk-In**: Shoppers use smartphones in the physical store to scan shelf barcodes, track budget limits, navigate aisle routes, and produce a 6-digit Walk-In Code for instant counter POS handover.
+  - **Remote From-Home Shopping**: Shoppers order online for home delivery with dynamic distance fees and Cash on Delivery (COD).
+- **In-Store Marketing Toolkit**: Merchants can generate printable QR code posters directly from the portal for in-shop customer onboarding and direct WhatsApp ordering.
