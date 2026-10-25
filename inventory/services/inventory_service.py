@@ -103,6 +103,7 @@ class InventoryService:
         if qty <= 0:
             raise ValueError("Quantity to fulfill must be strictly positive.")
 
+        InventoryRepository.get_or_create_balance(store, product)
         balance = StockBalance.objects.select_for_update().get(store=store, product=product)
 
         balance.reserved = max(Decimal('0.000'), balance.reserved - qty)
@@ -141,6 +142,7 @@ class InventoryService:
     ) -> StockBalance:
         """Release reserved stock back to available pool upon order cancellation or rejection."""
         qty = Decimal(str(quantity))
+        InventoryRepository.get_or_create_balance(store, product)
         balance = StockBalance.objects.select_for_update().get(store=store, product=product)
 
         balance.reserved = max(Decimal('0.000'), balance.reserved - qty)

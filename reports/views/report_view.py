@@ -28,6 +28,41 @@ class ReportViewSet(viewsets.ViewSet):
             )
         return store, None
 
+    @action(detail=False, methods=['get'], url_path='vendor-summary')
+    def vendor_summary(self, request):
+        """Unified dashboard report endpoint for vendor store view."""
+        store_id = request.query_params.get('store_id')
+        if not store_id:
+            return custome_error_response("store_id query param is required.", status_code=status.HTTP_400_BAD_REQUEST)
+
+        store, err = self._get_authorized_store(request, int(store_id))
+        if err:
+            return err
+
+        sales_data = ReportService.get_sales_report(store=store)
+        inv_data = ReportService.get_inventory_report(store=store)
+        hot_products = ReportService.get_hot_products(store=store)
+
+        financials = sales_data.get('financials', {})
+        orders_info = sales_data.get('orders', {})
+
+        data = {
+            "store_id": store.id,
+            "store_name": store.name,
+            "gross_sales": financials.get('gross_sales', '0.00'),
+            "net_product_sales": financials.get('net_product_sales', '0.00'),
+            "delivery_fees_collected": financials.get('delivery_fees_collected', '0.00'),
+            "cod_collected": financials.get('cod_collected', '0.00'),
+            "cod_outstanding": financials.get('cod_outstanding', '0.00'),
+            "total_orders": orders_info.get('total', 0),
+            "completed_orders": orders_info.get('completed', 0),
+            "cancelled_orders": orders_info.get('cancelled', 0),
+            "total_tracked_products": inv_data.get('total_tracked_products', 0),
+            "low_stock_items": inv_data.get('low_stock_items', []),
+            "hot_products": hot_products,
+        }
+        return custome_success_response(data=data)
+
     @action(detail=False, methods=['get'])
     def sales(self, request):
         """Sales performance report."""

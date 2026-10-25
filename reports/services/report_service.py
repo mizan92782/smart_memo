@@ -170,3 +170,47 @@ class ReportService:
                 "total_procurement_cost": str(metrics['total_procurement_cost']),
             }
         }
+
+    @staticmethod
+    def get_hot_products(store: Store, limit: int = 12) -> list:
+        from orders.models.order_mod import OrderItem
+        from products.models.product_mod import Product
+        from products.models.product_image_mod import ProductImage
+
+        sales_agg = (
+            OrderItem.objects
+            .filter(order__store=store)
+            .values('product_id')
+            .annotate(
+                units_sold=Sum('quantity'),
+                gross_revenue=Sum('line_total')
+            )
+            .order_by('-units_sold')
+        )
+        sales_dict = {item['product_id']: item for item in sales_agg if item['product_id']}
+
+        products = Product.objects.filter(store=store, is_deleted=False).select_related('category')
+        results = []
+        for p in products:
+            info = sales_dict.get(p.id, {'units_sold': 0, 'gross_revenue': Decimal('0.00')})
+            img = ProductImage.objects.filter(product=p, is_primary=True).first() or ProductImage.objects.filter(product=p).first()
+            img_url = img.effective_url if img else ""
+            results.append({
+                "id": p.id,
+                "name": p.name,
+                "category_name": p.category.name if p.category else "General",
+                "barcode": p.barcode or p.sku or "",
+                "sku": p.sku or "",
+                "aisle": p.aisle or "",
+                "shelf_location": p.shelf_location or "",
+                "price": str(p.price),
+                "cost_price": str(p.cost_price),
+                "units_sold": info['units_sold'],
+                "gross_revenue": str(info['gross_revenue']),
+                "image_url": img_url,
+                "measure": p.measure,
+                "unit": p.unit,
+            })
+
+        results.sort(key=lambda x: (x['units_sold'], Decimal(x['gross_revenue'])), reverse=True)
+        return results[:limit]
