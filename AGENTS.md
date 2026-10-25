@@ -10,6 +10,7 @@ Build and maintain Smart Memo System, a multi-tenant SaaS connecting local store
 4. Implement one bounded feature at a time.
 5. Run relevant tests and checks. Never claim a command passed unless it ran successfully.
 6. Update the relevant skill with reusable decisions or patterns discovered.
+7. Whenever backend APIs, models, or business workflows change, update `docs/FRONTEND_BACKEND_SYNC_TRACKER.md` and correspondingly update the frontend in `/home/mizan/Desktop/Smart_Memo_Frontend` to maintain full-stack parity.
 
 ## Non-negotiable engineering rules
 - Enforce tenant isolation server-side. Never trust a client-provided tenant/store ID without authorization checks.
@@ -38,4 +39,4 @@ Build and maintain Smart Memo System, a multi-tenant SaaS connecting local store
 8. Production hardening, deployment, monitoring, performance.
 
 ## Definition of done
-A feature is done when business behavior, validation, authorization, tenant isolation, data integrity, relevant caching/pagination/query optimization, automated tests, documentation, and a concise implementation report are complete.
+A feature is done when business behavior, validation, authorization, tenant isolation, data integrity, relevant caching/pagination/query optimization, automated tests, documentation, frontend UI alignment and sync tracking (`docs/FRONTEND_BACKEND_SYNC_TRACKER.md`), and a concise implementation report are complete.
