@@ -26,7 +26,10 @@ class UserSerializer(serializers.ModelSerializer):
 class RegisterSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
-    full_name = serializers.CharField(required=False, default="")
+    full_name = serializers.CharField(required=False, default="", allow_blank=True)
+    phone = serializers.CharField(required=False, default="", allow_blank=True)
+    phone_number = serializers.CharField(required=False, default="", allow_blank=True)
+    store_name = serializers.CharField(required=False, default="", allow_blank=True)
     role = serializers.ChoiceField(choices=UserRoleEnum.choices, required=False, default=UserRoleEnum.CUSTOMER)
 
 

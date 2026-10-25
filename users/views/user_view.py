@@ -17,6 +17,7 @@ from users.serializers.user_ser import (
 from users.services.user_service import UserService
 from users.repositories.user_repository import UserRepository
 from shared.responses.responses import custome_success_response, custome_error_response
+from shared.enums.enums import UserRoleEnum
 
 
 from shared.throtling import LoginAnonThrottle, LoginUserThrottle, SignupAnonThrottle
@@ -34,15 +35,40 @@ class UserViewSet(viewsets.GenericViewSet):
         email = serializer.validated_data['email']
         password = serializer.validated_data['password']
         full_name = serializer.validated_data.get('full_name', '')
-        role = serializer.validated_data.get('role')
+        role = serializer.validated_data.get('role', UserRoleEnum.CUSTOMER)
+        phone = serializer.validated_data.get('phone') or serializer.validated_data.get('phone_number', '')
+        store_name = serializer.validated_data.get('store_name', '').strip()
 
         if UserRepository.exists_by_email(email):
             return custome_error_response("A user with this email already exists.", status_code=status.HTTP_400_BAD_REQUEST)
 
         user, profile = UserService.register_user(email=email, password=password, full_name=full_name, role=role)
+        if phone:
+            profile.phone_number = phone
+            profile.save(update_fields=['phone_number'])
+
+        if role == UserRoleEnum.VENDOR and store_name:
+            from stores.services.store_service import StoreService
+            from django.utils.text import slugify
+            import uuid
+            slug_base = slugify(store_name) or f"store-{uuid.uuid4().hex[:6]}"
+            StoreService.register_store(
+                vendor=user,
+                name=store_name,
+                public_url_slug=slug_base,
+                owner_name=full_name,
+                phone_number=phone,
+                email=email,
+            )
+
+        token = UserRepository.get_or_create_token(user)
+        user_data = UserSerializer(user).data
         return custome_success_response(
             message="User registered successfully.",
-            data=UserSerializer(user).data,
+            data={
+                "user": user_data,
+                "token": token.key,
+            },
             data_title="user",
             status_code=status.HTTP_201_CREATED
         )
@@ -55,11 +81,18 @@ class UserViewSet(viewsets.GenericViewSet):
         password = serializer.validated_data['password']
 
         user, token = UserService.login_user(email=email, password=password, request=request)
+        user_data = UserSerializer(user).data
+        profile = getattr(user, 'profile', None)
         return custome_success_response(
             message="Login successful.",
             data={
                 "token": token,
-                "user": UserSerializer(user).data,
+                "user": user_data,
+                "user_id": user.id,
+                "email": user.email,
+                "role": user.role,
+                "name": profile.full_name if profile else "",
+                "phone": profile.phone_number if profile else "",
             },
             status_code=status.HTTP_200_OK
         )

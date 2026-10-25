@@ -29,7 +29,7 @@ class StoreViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultsPagination
 
     def get_permissions(self):
-        if self.action in ['public', 'public_detail', 'public_storefront', 'nearby', 'calculate_delivery_fee']:
+        if self.action in ['list', 'retrieve', 'public', 'public_detail', 'public_storefront', 'nearby', 'calculate_delivery_fee']:
             return [AllowAny()]
         if self.action == 'reviews':
             if self.request.method == 'GET':
@@ -45,14 +45,28 @@ class StoreViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         if not self.request.user.is_authenticated:
-            return Store.objects.none()
+            return StoreRepository.get_public_active_stores()
         if (
             self.request.user.is_superuser
             or self.request.user.is_staff
             or getattr(self.request.user, 'role', None) in (UserRoleEnum.STAFF, UserRoleEnum.SUPERUSER)
         ):
             return StoreRepository.get_all_stores()
-        return StoreRepository.get_by_vendor(self.request.user.id)
+        if getattr(self.request.user, 'role', None) == UserRoleEnum.VENDOR:
+            if self.action in ['update', 'partial_update', 'destroy']:
+                return StoreRepository.get_by_vendor(self.request.user.id)
+            if self.request.query_params.get('my_stores') == 'true':
+                return StoreRepository.get_by_vendor(self.request.user.id)
+            return StoreRepository.get_all_stores()
+        return StoreRepository.get_public_active_stores()
+
+    def get_serializer_class(self):
+        if self.action in ['public', 'public_detail', 'public_storefront', 'nearby']:
+            return PublicStoreSerializer
+        if not self.request.user.is_authenticated or getattr(self.request.user, 'role', None) == UserRoleEnum.CUSTOMER:
+            if self.action in ['list', 'retrieve']:
+                return PublicStoreSerializer
+        return StoreSerializer
 
 
     def create(self, request, *args, **kwargs):
